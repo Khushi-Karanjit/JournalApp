@@ -150,9 +150,9 @@ public class EntryService
                 "OR SecondaryMood1Id IN (" + placeholders + ") " +
                 "OR SecondaryMood2Id IN (" + placeholders + "))");
 
-            parameters.AddRange(distinctMoodIds);
-            parameters.AddRange(distinctMoodIds);
-            parameters.AddRange(distinctMoodIds);
+            AddIntParameters(parameters, distinctMoodIds);
+            AddIntParameters(parameters, distinctMoodIds);
+            AddIntParameters(parameters, distinctMoodIds);
         }
 
         if (tagIds is { Count: > 0 })
@@ -167,7 +167,7 @@ public class EntryService
                 "GROUP BY EntryId " +
                 "HAVING COUNT(DISTINCT TagId) = ?)");
 
-            parameters.AddRange(distinctTagIds);
+            AddIntParameters(parameters, distinctTagIds);
             parameters.Add(distinctTagIds.Count);
         }
 
@@ -175,5 +175,11 @@ public class EntryService
             return ("", parameters);
 
         return (" WHERE " + string.Join(" AND ", clauses), parameters);
+    }
+
+    private static void AddIntParameters(List<object> parameters, IEnumerable<int> values)
+    {
+        foreach (var value in values)
+            parameters.Add(value);
     }
 }

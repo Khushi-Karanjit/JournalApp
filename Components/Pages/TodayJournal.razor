@@ -170,6 +170,13 @@
         if (firstRender)
         {
             JS.InvokeVoidAsync("initQuill", "journal");
+            _editorReady = true;
+
+            if (_pendingContent is not null)
+            {
+                JS.InvokeVoidAsync("setQuillHtml", _pendingContent);
+                _pendingContent = null;
+            }
         }
     }
 
@@ -178,6 +185,8 @@
     private string _title = "";
     private string _content = "";
     private string _status = "";
+    private bool _editorReady;
+    private string? _pendingContent;
 
     private List<MoodGroup> _moodGroups = new();
     private int _primaryMoodId;
@@ -220,6 +229,7 @@
             _title = "";
             _content = "";
             _primaryMoodId = 0;
+            SetEditorContent(_content);
 
             _status = "No entry yet for today. Write something and save.";
             return;
@@ -228,6 +238,7 @@
         _title = _todayEntry.Title ?? "";
         _content = _todayEntry.Content ?? "";
         _primaryMoodId = _todayEntry.PrimaryMoodId;
+        SetEditorContent(_content);
 
         if (_todayEntry.SecondaryMood1Id.HasValue)
             _secondaryMoodIds.Add(_todayEntry.SecondaryMood1Id.Value);
@@ -302,6 +313,7 @@
             return;
         }
 
+        _content = await JS.InvokeAsync<string>("getQuillHtml");
         var secondary = _secondaryMoodIds.Take(2).ToList();
 
         var entry = _todayEntry ?? new JournalEntry();
@@ -342,4 +354,12 @@
     }
 
     private sealed record MoodGroup(string Category, List<Mood> Moods);
+
+    private void SetEditorContent(string html)
+    {
+        if (_editorReady)
+            JS.InvokeVoidAsync("setQuillHtml", html ?? "");
+        else
+            _pendingContent = html ?? "";
+    }
 }
