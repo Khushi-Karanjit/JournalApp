@@ -29,6 +29,8 @@ public static class JournalDatabase
             await _database.CreateTableAsync<Tag>();
             await _database.CreateTableAsync<EntryTag>();
 
+            await SeedAsync();
+
             _initialized = true;
         }
         finally
@@ -37,11 +39,24 @@ public static class JournalDatabase
         }
     }
 
+    public static async Task<SQLiteAsyncConnection> GetConnectionAsync()
+    {
+        await InitAsync();
+        if (_database is null) throw new InvalidOperationException("Database not initialized.");
+        return _database;
+    }
+
+    public static DateTime NormalizeEntryDate(DateTime date)
+    {
+        var local = date.Kind == DateTimeKind.Unspecified ? date : date.ToLocalTime();
+        return local.Date;
+    }
+
     public static async Task<JournalEntry> UpsertEntryForDayAsync(JournalEntry entry)
     {
         if (_database is null) throw new InvalidOperationException("Database not initialized.");
 
-        entry.EntryDate = NormalizeDate(entry.EntryDate);
+        entry.EntryDate = NormalizeEntryDate(entry.EntryDate);
 
         var existing = await _database.Table<JournalEntry>()
             .Where(e => e.EntryDate == entry.EntryDate)
@@ -86,9 +101,83 @@ public static class JournalDatabase
         return tag;
     }
 
-    private static DateTime NormalizeDate(DateTime date)
+    private static async Task SeedAsync()
     {
-        var local = date.Kind == DateTimeKind.Unspecified ? date : date.ToLocalTime();
-        return local.Date;
+        if (_database is null) throw new InvalidOperationException("Database not initialized.");
+
+        await SeedMoodsAsync();
+        await SeedTagsAsync();
+    }
+
+    private static async Task SeedMoodsAsync()
+    {
+        if (_database is null) throw new InvalidOperationException("Database not initialized.");
+
+        var moods = new (string Name, string Category)[]
+        {
+            ("Happy", "Positive"),
+            ("Excited", "Positive"),
+            ("Relaxed", "Positive"),
+            ("Grateful", "Positive"),
+            ("Confident", "Positive"),
+
+            ("Calm", "Neutral"),
+            ("Thoughtful", "Neutral"),
+            ("Curious", "Neutral"),
+            ("Nostalgic", "Neutral"),
+            ("Bored", "Neutral"),
+
+            ("Sad", "Negative"),
+            ("Angry", "Negative"),
+            ("Stressed", "Negative"),
+            ("Lonely", "Negative"),
+            ("Anxious", "Negative")
+        };
+
+        foreach (var mood in moods)
+        {
+            var existing = await _database.Table<Mood>()
+                .Where(m => m.Name == mood.Name && m.Category == mood.Category)
+                .FirstOrDefaultAsync();
+
+            if (existing is not null) continue;
+
+            await _database.InsertAsync(new Mood
+            {
+                Name = mood.Name,
+                Category = mood.Category
+            });
+        }
+    }
+
+    private static async Task SeedTagsAsync()
+    {
+        if (_database is null) throw new InvalidOperationException("Database not initialized.");
+
+        var tags = new[]
+        {
+            "Work", "Career", "Studies", "Family", "Friends", "Relationships",
+            "Health", "Fitness", "Personal Growth", "Self-care", "Hobbies",
+            "Travel", "Nature", "Finance", "Spirituality", "Birthday",
+            "Holiday", "Vacation", "Celebration", "Exercise", "Reading",
+            "Writing", "Cooking", "Meditation", "Yoga", "Music", "Shopping",
+            "Parenting", "Projects", "Planning", "Reflection"
+        };
+
+        foreach (var name in tags)
+        {
+            var normalized = name.Trim();
+            var existing = await _database.Table<Tag>()
+                .Where(t => t.Name.ToLower() == normalized.ToLower())
+                .FirstOrDefaultAsync();
+
+            if (existing is not null) continue;
+
+            await _database.InsertAsync(new Tag
+            {
+                Name = normalized,
+                IsPrebuilt = true
+            });
+        }
     }
 }

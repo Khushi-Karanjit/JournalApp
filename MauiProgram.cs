@@ -22,6 +22,10 @@ namespace JournalApp
             builder.Services.AddSingleton<JournalQueryService>();
             builder.Services.AddSingleton<JournalApp.Services.DiaryEntryService>();
             builder.Services.AddSingleton<AuthService>();
+            builder.Services.AddSingleton<JournalDatabaseService>();
+            builder.Services.AddSingleton<EntryService>();
+            builder.Services.AddSingleton<MoodService>();
+            builder.Services.AddSingleton<TagService>();
 
 
 

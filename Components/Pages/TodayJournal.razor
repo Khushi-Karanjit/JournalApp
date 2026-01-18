@@ -1,13 +1,12 @@
-﻿@page "/today"
-@using JournalApp.Models
-@inject JournalApp.Services.AppDataContext DataContext
-@inject JournalApp.Services.MoodCatalog MoodCatalog
-@inject JournalApp.Services.TagCatalog TagCatalog
-@inject JournalApp.Services.DiaryEntryService EntryService
+@page "/today"
+@using JournalApp.Models.Sqlite
+@inject JournalApp.Services.EntryService EntryService
+@inject JournalApp.Services.MoodService MoodService
+@inject JournalApp.Services.TagService TagService
 @inject IJSRuntime JS
-<h3>Today’s Journal</h3>
+<h3>Today's Journal</h3>
 <p class="text-muted mb-3">
-    One entry per day — @DateOnly.FromDateTime(DateTime.Now).ToString("dddd, MMM dd")
+    One entry per day - @DateOnly.FromDateTime(DateTime.Now).ToString("dddd, MMM dd")
 </p>
 
 @if (!string.IsNullOrWhiteSpace(_status))
@@ -23,7 +22,7 @@
                 <label class="form-label">Title</label>
                 <input class="form-control"
                        placeholder="Give your entry a title..."
-                       @bind="_draft.Title" />
+                       @bind="_title" />
             </div>
 
             <div class="mb-3">
@@ -31,12 +30,12 @@
                 @* <textarea class="form-control"
                           rows="10"
                           placeholder="Write here..."
-                          @bind="_draft.Content"></textarea> *@
+                          @bind="_content"></textarea> *@
                           <div id ="journal">
 
                           </div>
                 <div class="form-text">
-                    Words: @_draft.WordCount
+                    Words: @CountWords(_content)
                 </div>
             </div>
 
@@ -44,8 +43,8 @@
             {
                 <hr />
                 <div class="text-muted" style="font-size:0.9rem;">
-                    <div><strong>Created:</strong> @_todayEntry.CreatedOn.ToString("g")</div>
-                    <div><strong>Last updated:</strong> @_todayEntry.LastUpdatedOn.ToString("g")</div>
+                    <div><strong>Created:</strong> @_todayEntry.CreatedAt.ToString("g")</div>
+                    <div><strong>Last updated:</strong> @_todayEntry.UpdatedAt.ToString("g")</div>
                 </div>
             }
         </div>
@@ -58,13 +57,14 @@
 
             <div class="mb-3">
                 <label class="form-label">Primary mood (required)</label>
-                <select class="form-select" @bind="_mainMood">
+                <select class="form-select" @bind="_primaryMoodId">
+                    <option value="0">Select a mood</option>
                     @foreach (var group in _moodGroups)
                     {
                         <optgroup label="@group.Category">
                             @foreach (var m in group.Moods)
                             {
-                                <option value="@m">@m</option>
+                                <option value="@m.Id">@m.Name</option>
                             }
                         </optgroup>
                     }
@@ -80,14 +80,14 @@
                         <div class="d-flex flex-wrap gap-2">
                             @foreach (var m in group.Moods)
                             {
-                                var selected = _extraMoods.Contains(m);
-                                var disable = !selected && _extraMoods.Count >= 2;
+                                var selected = _secondaryMoodIds.Contains(m.Id);
+                                var disable = !selected && _secondaryMoodIds.Count >= 2;
 
                                 <button type="button"
                                         class="btn btn-sm @(selected ? "btn-dark" : "btn-outline-dark")"
                                         disabled="@disable"
-                                        @onclick="() => ToggleExtraMood(m)">
-                                    @m
+                                        @onclick="() => ToggleSecondaryMood(m.Id)">
+                                    @m.Name
                                 </button>
                             }
                         </div>
@@ -95,7 +95,7 @@
                 }
 
                 <div class="form-text">
-                    Selected: @_extraMoods.Count / 2
+                    Selected: @_secondaryMoodIds.Count / 2
                 </div>
             </div>
         </div>
@@ -112,11 +112,11 @@
                 <div class="d-flex flex-wrap gap-2 mb-3">
                     @foreach (var t in _availableTags)
                     {
-                        var selected = _selectedTagIds.Contains(t.TagId);
+                        var selected = _selectedTagIds.Contains(t.Id);
 
                         <button type="button"
                                 class="btn btn-sm @(selected ? "btn-dark" : "btn-outline-dark")"
-                                @onclick="() => ToggleTag(t.TagId)">
+                                @onclick="() => ToggleTag(t.Id)">
                             @t.Name
                         </button>
                     }
@@ -173,98 +173,88 @@
         }
     }
 
-    private DiaryEntry _draft = new();
-    private DiaryEntry? _todayEntry;
+    private JournalEntry? _todayEntry;
     private bool _hasTodayEntry;
+    private string _title = "";
+    private string _content = "";
     private string _status = "";
 
-    private List<MoodCatalog.MoodGroup> _moodGroups = new();
-    private Mood _mainMood = Mood.Calm;
+    private List<MoodGroup> _moodGroups = new();
+    private int _primaryMoodId;
 
     private List<Tag> _availableTags = new();
 
-    private readonly List<Mood> _extraMoods = new();
-    private readonly HashSet<Guid> _selectedTagIds = new();
+    private readonly HashSet<int> _secondaryMoodIds = new();
+    private readonly HashSet<int> _selectedTagIds = new();
     private readonly List<Tag> _selectedTags = new();
 
     private string _newTagText = "";
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        var uid = DataContext.ActiveUser.UserId;
+        var moods = await MoodService.GetAllAsync();
+        _moodGroups = moods
+            .GroupBy(m => m.Category)
+            .Select(g => new MoodGroup(g.Key, g.OrderBy(m => m.Name).ToList()))
+            .OrderBy(g => g.Category)
+            .ToList();
 
-        _moodGroups = MoodCatalog.GetMoodsByCategory();
-        _availableTags = TagCatalog.GetUserTags(uid);
+        _availableTags = await TagService.GetAllAsync();
 
-        LoadToday();
+        await LoadTodayAsync();
     }
 
-    private void LoadToday()
+    private async Task LoadTodayAsync()
     {
-        var uid = DataContext.ActiveUser.UserId;
-
-        var today = DateOnly.FromDateTime(DateTime.Now);
-        _todayEntry = EntryService.GetEntryForDay(uid, today);
+        var today = DateTime.Today;
+        _todayEntry = await EntryService.GetByDateAsync(today);
 
         _hasTodayEntry = _todayEntry is not null;
 
-        _extraMoods.Clear();
+        _secondaryMoodIds.Clear();
         _selectedTagIds.Clear();
         _selectedTags.Clear();
 
         if (_todayEntry is null)
         {
-            _draft = new DiaryEntry();
-            _mainMood = GetDefaultPrimaryMood();
+            _title = "";
+            _content = "";
+            _primaryMoodId = 0;
 
             _status = "No entry yet for today. Write something and save.";
             return;
         }
 
-        // Copy into draft
-        _draft = new DiaryEntry
-        {
-            Title = _todayEntry.Title,
-            Content = _todayEntry.Content
-        };
+        _title = _todayEntry.Title ?? "";
+        _content = _todayEntry.Content ?? "";
+        _primaryMoodId = _todayEntry.PrimaryMoodId;
 
-        // Model uses ONE list: Moods
-        // First mood is treated as the main mood
-        if (_todayEntry.Moods is not null && _todayEntry.Moods.Count > 0)
-        {
-            _mainMood = _todayEntry.Moods[0];
+        if (_todayEntry.SecondaryMood1Id.HasValue)
+            _secondaryMoodIds.Add(_todayEntry.SecondaryMood1Id.Value);
+        if (_todayEntry.SecondaryMood2Id.HasValue)
+            _secondaryMoodIds.Add(_todayEntry.SecondaryMood2Id.Value);
 
-            foreach (var m in _todayEntry.Moods.Skip(1))
-            {
-                if (_extraMoods.Count < 2 && !_extraMoods.Contains(m))
-                    _extraMoods.Add(m);
-            }
-        }
-        else
-        {
-            _mainMood = GetDefaultPrimaryMood();
-        }
-
-        foreach (var t in _todayEntry.Tags)
-            _selectedTagIds.Add(t.TagId);
+        var tagsForEntry = await TagService.GetTagsForEntryAsync(_todayEntry.Id);
+        foreach (var t in tagsForEntry)
+            _selectedTagIds.Add(t.Id);
 
         RefreshSelectedTags();
-        _status = "Loaded today’s entry.";
+        _status = "Loaded today's entry.";
     }
 
-    private void ToggleExtraMood(Mood mood)
+    private void ToggleSecondaryMood(int moodId)
     {
-        if (_extraMoods.Contains(mood))
+        if (_secondaryMoodIds.Contains(moodId))
         {
-            _extraMoods.Remove(mood);
+            _secondaryMoodIds.Remove(moodId);
             return;
         }
 
-        if (_extraMoods.Count >= 2) return;
-        _extraMoods.Add(mood);
+        if (_secondaryMoodIds.Count >= 2) return;
+        _secondaryMoodIds.Add(moodId);
     }
 
-    private void ToggleTag(Guid tagId)
+    private void ToggleTag(int tagId)
     {
         if (_selectedTagIds.Contains(tagId))
             _selectedTagIds.Remove(tagId);
@@ -277,12 +267,11 @@
     private void RefreshSelectedTags()
     {
         _selectedTags.Clear();
-        _selectedTags.AddRange(_availableTags.Where(t => _selectedTagIds.Contains(t.TagId)));
+        _selectedTags.AddRange(_availableTags.Where(t => _selectedTagIds.Contains(t.Id)));
     }
 
-    private void AddCustomTag()
+    private async Task AddCustomTag()
     {
-        var uid = DataContext.ActiveUser.UserId;
         var name = (_newTagText ?? "").Trim();
 
         if (string.IsNullOrWhiteSpace(name))
@@ -291,77 +280,66 @@
             return;
         }
 
-        if (!DataContext.Tags.Any(t => t.UserId == uid &&
-                                       t.Name.Equals(name, StringComparison.OrdinalIgnoreCase)))
-        {
-            DataContext.Tags.Add(new Tag
-            {
-                UserId = uid,
-                Name = name,
-                IsPredefined = false
-            });
-        }
-
-        _availableTags = TagCatalog.GetUserTags(uid);
+        await TagService.AddCustomAsync(name);
+        _availableTags = await TagService.GetAllAsync();
 
         var added = _availableTags
             .FirstOrDefault(t => t.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
 
         if (added is not null)
-            _selectedTagIds.Add(added.TagId);
+            _selectedTagIds.Add(added.Id);
 
         RefreshSelectedTags();
         _newTagText = "";
         _status = "Tag added.";
     }
 
-    private void Save()
+    private async Task Save()
     {
-        var uid = DataContext.ActiveUser.UserId;
-
-        // Build moods list: main mood + up to 2 extras (no duplicates)
-        var moods = new List<Mood> { _mainMood };
-        foreach (var m in _extraMoods)
+        if (_primaryMoodId <= 0)
         {
-            if (!moods.Contains(m))
-                moods.Add(m);
+            _status = "Primary mood is required.";
+            return;
         }
 
-        _draft.Moods = moods;
+        var secondary = _secondaryMoodIds.Take(2).ToList();
 
-        _draft.Tags = _availableTags
-            .Where(t => _selectedTagIds.Contains(t.TagId))
-            .ToList();
+        var entry = _todayEntry ?? new JournalEntry();
+        entry.EntryDate = DateTime.Today;
+        entry.Title = _title?.Trim();
+        entry.Content = _content ?? "";
+        entry.PrimaryMoodId = _primaryMoodId;
+        entry.SecondaryMood1Id = secondary.Count > 0 ? secondary[0] : null;
+        entry.SecondaryMood2Id = secondary.Count > 1 ? secondary[1] : null;
 
-        var today = DateOnly.FromDateTime(DateTime.Now);
-        _todayEntry = EntryService.UpsertForDay(uid, today, _draft);
+        _todayEntry = await EntryService.UpsertAsync(entry);
+        await TagService.SetTagsForEntryAsync(_todayEntry.Id, _selectedTagIds.ToList());
 
         _hasTodayEntry = true;
 
         _status = "Saved successfully.";
-        LoadToday();
+        await LoadTodayAsync();
     }
 
-    private Mood GetDefaultPrimaryMood()
+    private async Task DeleteToday()
     {
-        var neutral = _moodGroups
-            .FirstOrDefault(g => g.Category == MoodCategory.Neutral);
+        if (_todayEntry is null) return;
 
-        if (neutral is not null && neutral.Moods.Count > 0)
-            return neutral.Moods[0];
+        var confirm = await JS.InvokeAsync<bool>("confirm", "Delete today's entry?");
+        if (!confirm) return;
 
-        var first = _moodGroups.FirstOrDefault();
-        return first is not null && first.Moods.Count > 0 ? first.Moods[0] : Mood.Happy;
+        var today = DateTime.Today;
+        var ok = await EntryService.DeleteByDateAsync(today);
+
+        _status = ok ? "Deleted today's entry." : "No entry to delete.";
+        await LoadTodayAsync();
     }
 
-    private void DeleteToday()
+    private static int CountWords(string? text)
     {
-        var uid = DataContext.ActiveUser.UserId;
-
-         var today = DateOnly.FromDateTime(DateTime.Now);
-        var ok = EntryService.DeleteForDay(uid, today);
-
-        _status = ok ? "Deleted today’s entry." : "No entry to delete.";
-        LoadToday();
+        if (string.IsNullOrWhiteSpace(text)) return 0;
+        return text.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
     }
+
+    private sealed record MoodGroup(string Category, List<Mood> Moods);
 }

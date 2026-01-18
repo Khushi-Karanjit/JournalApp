@@ -1,9 +1,10 @@
-﻿@page "/search"
-@using JournalApp.Models
-@inject JournalApp.Services.AppDataContext DataContext
-@inject JournalApp.Services.MoodCatalog MoodCatalog
-@inject JournalApp.Services.JournalQueryService QueryService
+@page "/search"
+@using JournalApp.Models.Sqlite
+@inject JournalApp.Services.EntryService EntryService
+@inject JournalApp.Services.MoodService MoodService
+@inject JournalApp.Services.TagService TagService
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 
 <h3 class="mb-3">Journal App</h3>
 
@@ -16,11 +17,11 @@
     </div>
 
     <div class="col-md-3">
-        <select class="form-select" @bind="moodFilter">
-            <option value="">Filter by Mood</option>
+        <select class="form-select" @bind="moodFilterId">
+            <option value="0">Filter by Mood</option>
             @foreach (var m in moods)
             {
-                <option value="@m">@m</option>
+                <option value="@m.Id">@m.Name</option>
             }
         </select>
     </div>
@@ -29,8 +30,8 @@
         <select class="form-select" @bind="sortOption">
             <option value="date_desc">Sort by Date</option>
             <option value="date_asc">Oldest First</option>
-            <option value="title_asc">Title A–Z</option>
-            <option value="title_desc">Title Z–A</option>
+            <option value="title_asc">Title A-Z</option>
+            <option value="title_desc">Title Z-A</option>
         </select>
     </div>
 
@@ -38,6 +39,50 @@
         <button class="btn btn-primary" @onclick="OnSearchClicked">
             Search
         </button>
+    </div>
+</div>
+
+<!-- Date Range + Tags -->
+<div class="row g-3 align-items-center mb-3">
+    <div class="col-md-3">
+        <input type="date"
+               class="form-control"
+               @bind-value="startDate"
+               @bind-value:format="yyyy-MM-dd" />
+    </div>
+
+    <div class="col-md-3">
+        <input type="date"
+               class="form-control"
+               @bind-value="endDate"
+               @bind-value:format="yyyy-MM-dd" />
+    </div>
+
+    <div class="col-md-6">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <div class="text-muted">Tags (@selectedTagIds.Count selected)</div>
+            <button class="btn btn-sm btn-outline-secondary" @onclick="ToggleTags">
+                @(_showTags ? "Hide tags" : "Show tags")
+            </button>
+        </div>
+
+        @if (_showTags)
+        {
+            <div class="tag-panel">
+                <div class="d-flex flex-wrap gap-2">
+                    @foreach (var t in allTags)
+                    {
+                        var selected = selectedTagIds.Contains(t.Id);
+
+                        <button type="button"
+                                class="btn btn-sm @(selected ? "btn-dark" : "btn-outline-dark")"
+                                @onclick="() => ToggleTag(t.Id)">
+                            @t.Name
+                        </button>
+                    }
+                </div>
+            </div>
+        }
     </div>
 </div>
 
@@ -55,24 +100,24 @@
                 <div class="d-flex align-items-center justify-content-between border-bottom p-3">
                     <div class="flex-grow-1">
                         <div class="fw-semibold">
-                            @e.EntryDay.ToString("yyyy-MM-dd") - @e.Title
+                            @e.EntryDate.ToString("yyyy-MM-dd") - @e.Title
                         </div>
                         <div class="text-muted" style="font-size:0.9rem;">
-                            Mood: @(e.Moods.Count > 0 ? e.Moods[0].ToString() : "—") • Words: @e.WordCount
+                            Mood: @GetMoodName(e.PrimaryMoodId) Words: @CountWords(e.Content)
 
                         </div>
                     </div>
 
                     <div class="d-flex align-items-center gap-2">
                         <button class="btn btn-sm btn-outline-primary"
-                                @onclick="() => OpenEntry(e.EntryDay)">
+                                @onclick="() => OpenEntry(e.EntryDate)">
                             View/Edit
                         </button>
 
                         <button class="btn btn-sm btn-outline-danger"
                                 title="Delete"
-                                @onclick="() => DeleteEntry(e.EntryDay)">
-                            ✕
+                                @onclick="() => DeleteEntry(e.EntryDate)">
+                            X
                         </button>
                     </div>
                 </div>
@@ -103,113 +148,136 @@
 @code {
     // Filters
     private string searchText = "";
-    private string moodFilter = "";
+    private int moodFilterId;
     private string sortOption = "date_desc";
+    private DateTime? startDate;
+    private DateTime? endDate;
+
+    private readonly HashSet<int> selectedTagIds = new();
 
     // Mood dropdown values
     private List<Mood> moods = new();
+    private Dictionary<int, string> moodNameById = new();
+
+    // Tags
+    private List<Tag> allTags = new();
 
     // Data
-    private List<DiaryEntry> allResults = new();
-    private List<DiaryEntry> pagedResults = new();
+    private List<JournalEntry> pagedResults = new();
 
     // Pagination
     private int pageSize = 5;
     private int currentPage = 1;
     private int totalPages = 1;
+    private int totalCount;
+    private bool _showTags;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        moods = MoodCatalog.GetAvailableMoods();
-        RefreshResults(); // initial load
+        moods = await MoodService.GetAllAsync();
+        moodNameById = moods.ToDictionary(m => m.Id, m => m.Name);
+
+        allTags = await TagService.GetAllAsync();
+
+        await RefreshResultsAsync();
     }
 
-    private void OnSearchClicked()
+    private async Task OnSearchClicked()
     {
         currentPage = 1;
-        RefreshResults();
+        await RefreshResultsAsync();
     }
 
-    private void RefreshResults()
+    private async Task RefreshResultsAsync()
     {
-        var uid = DataContext.ActiveUser.UserId;
+        var moodIds = moodFilterId > 0 ? new List<int> { moodFilterId } : null;
+        var tagIds = selectedTagIds.Count > 0 ? selectedTagIds.ToList() : null;
 
-        Mood? mood = null;
-        if (!string.IsNullOrWhiteSpace(moodFilter) && Enum.TryParse<Mood>(moodFilter, out var parsed))
-            mood = parsed;
-
-        // Search by title/content + mood filter (date/tags optional for now)
-        allResults = QueryService.FindEntries(
-            uid,
+        totalCount = await EntryService.GetSearchCountAsync(
             searchText,
-            start: null,
-            end: null,
-            mood: mood,
-            requiredTags: null
-        );
+            startDate,
+            endDate,
+            moodIds,
+            tagIds);
 
-        // Sorting
-        allResults = sortOption switch
-        {
-            "date_asc" => allResults.OrderBy(e => e.EntryDay).ToList(),
-            "date_desc" => allResults.OrderByDescending(e => e.EntryDay).ToList(),
-            "title_asc" => allResults.OrderBy(e => e.Title).ToList(),
-            "title_desc" => allResults.OrderByDescending(e => e.Title).ToList(),
-            _ => allResults.OrderByDescending(e => e.EntryDay).ToList(),
-        };
-
-        // Pagination
-        totalPages = Math.Max(1, (int)Math.Ceiling(allResults.Count / (double)pageSize));
+        totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)pageSize));
         if (currentPage > totalPages) currentPage = totalPages;
-        if (currentPage < 1) currentPage = 1;
 
-        pagedResults = allResults
-            .Skip((currentPage - 1) * pageSize)
-            .Take(pageSize)
-            .ToList();
+        pagedResults = await EntryService.SearchAsync(
+            searchText,
+            startDate,
+            endDate,
+            moodIds,
+            tagIds,
+            currentPage,
+            pageSize,
+            sortOption);
     }
 
-    private void PrevPage()
+    private async Task PrevPage()
     {
         if (currentPage > 1)
         {
             currentPage--;
-            RefreshResults();
+            await RefreshResultsAsync();
         }
     }
 
-    private void NextPage()
+    private async Task NextPage()
     {
         if (currentPage < totalPages)
         {
             currentPage++;
-            RefreshResults();
+            await RefreshResultsAsync();
         }
     }
 
-    private void OpenEntry(DateOnly day)
+    private void ToggleTag(int tagId)
     {
-        // Milestone 1: simplest—navigate to today page.
-        // If later you add entry detail by date, we can route properly.
+        if (selectedTagIds.Contains(tagId))
+            selectedTagIds.Remove(tagId);
+        else
+            selectedTagIds.Add(tagId);
+    }
+
+    private void ToggleTags()
+    {
+        _showTags = !_showTags;
+    }
+
+    private void OpenEntry(DateTime day)
+    {
         Nav.NavigateTo("/today");
     }
 
-    private void DeleteEntry(DateOnly day)
+    private async Task DeleteEntry(DateTime day)
     {
-        var uid = DataContext.ActiveUser.UserId;
+        var confirm = await JS.InvokeAsync<bool>("confirm", "Delete this entry?");
+        if (!confirm) return;
 
-        var target = DataContext.Entries
-            .FirstOrDefault(e => e.OwnerId == uid && e.EntryDay == day);
+        await EntryService.DeleteByDateAsync(day);
+        await RefreshResultsAsync();
+    }
 
-        if (target is null) return;
+    private string GetMoodName(int moodId)
+    {
+        return moodNameById.TryGetValue(moodId, out var name) ? name : "-";
+    }
 
-        DataContext.Entries.Remove(target);
-
-        // If current page becomes empty, go back one page
-        var remainingCount = DataContext.Entries.Count(e => e.OwnerId == uid);
-        if ((currentPage - 1) * pageSize >= remainingCount)
-            currentPage = Math.Max(1, currentPage - 1);
-
-        RefreshResults();
+    private static int CountWords(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return 0;
+        return text.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
     }
 }
+
+<style>
+    .tag-panel {
+        max-height: 180px;
+        overflow: auto;
+        padding: 0.5rem;
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        background: #fff;
+    }
+</style>
