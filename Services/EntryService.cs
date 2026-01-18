@@ -49,6 +49,21 @@ public class EntryService
             .ToListAsync();
     }
 
+    public async Task<HashSet<DateTime>> GetEntryDatesInRangeAsync(DateTime startDate, DateTime endDate)
+    {
+        var db = await JournalDatabase.GetConnectionAsync();
+        var start = JournalDatabase.NormalizeEntryDate(startDate);
+        var end = JournalDatabase.NormalizeEntryDate(endDate);
+
+        var rows = await db.Table<JournalEntry>()
+            .Where(e => e.EntryDate >= start && e.EntryDate <= end)
+            .ToListAsync();
+
+        return rows
+            .Select(e => JournalDatabase.NormalizeEntryDate(e.EntryDate))
+            .ToHashSet();
+    }
+
     public async Task<int> GetSearchCountAsync(
         string? query,
         DateTime? startDate,

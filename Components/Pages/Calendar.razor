@@ -1,0 +1,122 @@
+@page "/calendar"
+@inject JournalApp.Services.EntryService EntryService
+@inject NavigationManager Nav
+
+<h3 class="mb-3">Calendar</h3>
+
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <button class="btn btn-outline-secondary btn-sm" @onclick="PrevMonth">Prev</button>
+    <div class="fw-semibold">@_currentMonth.ToString("MMMM yyyy")</div>
+    <button class="btn btn-outline-secondary btn-sm" @onclick="NextMonth">Next</button>
+</div>
+
+<table class="table table-bordered calendar">
+    <thead>
+        <tr>
+            @foreach (var day in _dayHeaders)
+            {
+                <th class="text-center">@day</th>
+            }
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var week in _weeks)
+        {
+            <tr>
+                @foreach (var date in week)
+                {
+                    var inMonth = date.Month == _currentMonth.Month;
+                    var hasEntry = _entryDates.Contains(date.Date);
+
+                    <td class="@GetCellClass(inMonth, hasEntry)">
+                        <button class="btn btn-sm w-100 text-start"
+                                disabled="@(!inMonth)"
+                                @onclick="() => OpenEntry(date)">
+                            @date.Day
+                        </button>
+                    </td>
+                }
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    private readonly string[] _dayHeaders = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
+    private DateTime _currentMonth = new(DateTime.Today.Year, DateTime.Today.Month, 1);
+    private List<List<DateTime>> _weeks = new();
+    private HashSet<DateTime> _entryDates = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadMonthAsync();
+    }
+
+    private async Task LoadMonthAsync()
+    {
+        var monthStart = _currentMonth;
+        var monthEnd = monthStart.AddMonths(1).AddDays(-1);
+
+        _entryDates = await EntryService.GetEntryDatesInRangeAsync(monthStart, monthEnd);
+        _weeks = BuildWeeks(monthStart);
+    }
+
+    private List<List<DateTime>> BuildWeeks(DateTime monthStart)
+    {
+        var firstOfMonth = new DateTime(monthStart.Year, monthStart.Month, 1);
+        var gridStart = firstOfMonth.AddDays(-(int)firstOfMonth.DayOfWeek);
+        var gridEnd = gridStart.AddDays(41);
+
+        var weeks = new List<List<DateTime>>();
+        var current = gridStart;
+
+        while (current <= gridEnd)
+        {
+            var week = new List<DateTime>();
+            for (var i = 0; i < 7; i++)
+            {
+                week.Add(current);
+                current = current.AddDays(1);
+            }
+            weeks.Add(week);
+        }
+
+        return weeks;
+    }
+
+    private string GetCellClass(bool inMonth, bool hasEntry)
+    {
+        if (!inMonth) return "bg-light text-muted";
+        return hasEntry ? "has-entry" : "";
+    }
+
+    private async Task PrevMonth()
+    {
+        _currentMonth = _currentMonth.AddMonths(-1);
+        await LoadMonthAsync();
+    }
+
+    private async Task NextMonth()
+    {
+        _currentMonth = _currentMonth.AddMonths(1);
+        await LoadMonthAsync();
+    }
+
+    private void OpenEntry(DateTime date)
+    {
+        var formatted = date.ToString("yyyy-MM-dd");
+        Nav.NavigateTo($"/today?date={formatted}");
+    }
+}
+
+<style>
+    .calendar td {
+        vertical-align: top;
+        padding: 0.25rem;
+    }
+
+    .calendar .has-entry {
+        background: #e7f1ff;
+        border-color: #b6d4fe;
+    }
+</style>

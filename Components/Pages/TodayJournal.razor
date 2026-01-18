@@ -165,6 +165,8 @@
 </div>
 
 @code {
+    [SupplyParameterFromQuery]
+    public DateTime? Date { get; set; }
     protected override void OnAfterRender(bool firstRender)
     {
         if (firstRender)
@@ -215,8 +217,8 @@
 
     private async Task LoadTodayAsync()
     {
-        var today = DateTime.Today;
-        _todayEntry = await EntryService.GetByDateAsync(today);
+        var targetDate = Date?.Date ?? DateTime.Today;
+        _todayEntry = await EntryService.GetByDateAsync(targetDate);
 
         _hasTodayEntry = _todayEntry is not null;
 
@@ -317,7 +319,7 @@
         var secondary = _secondaryMoodIds.Take(2).ToList();
 
         var entry = _todayEntry ?? new JournalEntry();
-        entry.EntryDate = DateTime.Today;
+        entry.EntryDate = Date?.Date ?? DateTime.Today;
         entry.Title = _title?.Trim();
         entry.Content = _content ?? "";
         entry.PrimaryMoodId = _primaryMoodId;
@@ -340,8 +342,8 @@
         var confirm = await JS.InvokeAsync<bool>("confirm", "Delete today's entry?");
         if (!confirm) return;
 
-        var today = DateTime.Today;
-        var ok = await EntryService.DeleteByDateAsync(today);
+        var targetDate = Date?.Date ?? DateTime.Today;
+        var ok = await EntryService.DeleteByDateAsync(targetDate);
 
         _status = ok ? "Deleted today's entry." : "No entry to delete.";
         await LoadTodayAsync();
