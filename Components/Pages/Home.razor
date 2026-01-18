@@ -1,5 +1,42 @@
-﻿@page "/"
+@page "/"
+@using JournalApp.Services
 
-<h1>Hello, world!</h1>
+<h1>Home</h1>
 
-Welcome to your new app.
+<div class="card p-3" style="max-width:520px;">
+    <h5 class="mb-2">Streaks</h5>
+    @if (_summary is null)
+    {
+        <div class="text-muted">Loading...</div>
+    }
+    else
+    {
+        <div class="d-flex gap-4">
+            <div>
+                <div class="text-muted" style="font-size:0.85rem;">Current streak</div>
+                <div class="fs-4 fw-semibold">@_summary.CurrentStreakDays</div>
+            </div>
+            <div>
+                <div class="text-muted" style="font-size:0.85rem;">Longest streak</div>
+                <div class="fs-4 fw-semibold">@_summary.LongestStreakDays</div>
+            </div>
+        </div>
+
+        <div class="mt-3">
+            <div class="text-muted" style="font-size:0.85rem;">Missed days (last 30 days)</div>
+            <div class="mt-1">
+                @_summary.MissedDates.Count
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private readonly StreakService _streakService = new();
+    private StreakService.StreakSummary? _summary;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _summary = await _streakService.GetSummaryAsync(30);
+    }
+}

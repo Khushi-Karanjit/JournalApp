@@ -70,6 +70,16 @@ public class EntryService
             .ToHashSet();
     }
 
+    public async Task<HashSet<DateTime>> GetAllEntryDatesAsync()
+    {
+        var db = await JournalDatabase.GetConnectionAsync();
+        var rows = await db.QueryAsync<EntryDateRow>("SELECT EntryDate FROM JournalEntry");
+
+        return rows
+            .Select(r => JournalDatabase.NormalizeEntryDate(r.EntryDate))
+            .ToHashSet();
+    }
+
     public async Task<int> GetSearchCountAsync(
         string? query,
         DateTime? startDate,
@@ -202,5 +212,10 @@ public class EntryService
     {
         foreach (var value in values)
             parameters.Add(value);
+    }
+
+    private sealed class EntryDateRow
+    {
+        public DateTime EntryDate { get; set; }
     }
 }
