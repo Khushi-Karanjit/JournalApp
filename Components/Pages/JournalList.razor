@@ -1,0 +1,111 @@
+@page "/journal-list"
+@using JournalApp.Models.Sqlite
+@inject JournalApp.Services.EntryService EntryService
+@inject NavigationManager Nav
+
+<h3 class="mb-3">Journal Entries</h3>
+
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <div class="text-muted">Total: @totalCount</div>
+    <div class="d-flex align-items-center gap-2">
+        <label class="form-label mb-0">Page size</label>
+        <select class="form-select form-select-sm" style="width:90px" @bind="pageSize" @bind:after="OnPageSizeChanged">
+            <option value="10">10</option>
+            <option value="20">20</option>
+        </select>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        @if (entries.Count == 0)
+        {
+            <div class="p-3 text-muted">No entries yet.</div>
+        }
+        else
+        {
+            @foreach (var e in entries)
+            {
+                <button class="list-group-item list-group-item-action d-flex justify-content-between align-items-center w-100 border-0 border-bottom p-3"
+                        @onclick="() => OpenEntry(e.EntryDate)">
+                    <div>
+                        <div class="fw-semibold">@e.EntryDate.ToString("yyyy-MM-dd")</div>
+                        <div class="text-muted" style="font-size:0.9rem;">@e.Title</div>
+                    </div>
+                    <span class="text-muted">&gt;</span>
+                </button>
+            }
+        }
+    </div>
+</div>
+
+<div class="d-flex justify-content-center align-items-center gap-3 mt-4 mb-4">
+    <button class="btn btn-outline-secondary btn-sm"
+            disabled="@(currentPage <= 1)"
+            @onclick="PrevPage">
+        Previous
+    </button>
+
+    <div class="text-muted">
+        Page @currentPage of @totalPages
+    </div>
+
+    <button class="btn btn-outline-secondary btn-sm"
+            disabled="@(currentPage >= totalPages)"
+            @onclick="NextPage">
+        Next
+    </button>
+</div>
+
+@code {
+    private readonly List<JournalEntry> entries = new();
+    private int pageSize = 10;
+    private int currentPage = 1;
+    private int totalPages = 1;
+    private int totalCount;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPageAsync();
+    }
+
+    private async Task LoadPageAsync()
+    {
+        totalCount = await EntryService.GetEntryCountAsync();
+        totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)pageSize));
+        if (currentPage > totalPages) currentPage = totalPages;
+
+        entries.Clear();
+        entries.AddRange(await EntryService.GetPagedAsync(currentPage, pageSize));
+    }
+
+    private async void OnPageSizeChanged()
+    {
+        currentPage = 1;
+        await LoadPageAsync();
+    }
+
+    private async Task PrevPage()
+    {
+        if (currentPage > 1)
+        {
+            currentPage--;
+            await LoadPageAsync();
+        }
+    }
+
+    private async Task NextPage()
+    {
+        if (currentPage < totalPages)
+        {
+            currentPage++;
+            await LoadPageAsync();
+        }
+    }
+
+    private void OpenEntry(DateTime date)
+    {
+        var formatted = date.ToString("yyyy-MM-dd");
+        Nav.NavigateTo($"/today?date={formatted}");
+    }
+}

@@ -49,6 +49,12 @@ public class EntryService
             .ToListAsync();
     }
 
+    public async Task<int> GetEntryCountAsync()
+    {
+        var db = await JournalDatabase.GetConnectionAsync();
+        return await db.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM JournalEntry");
+    }
+
     public async Task<HashSet<DateTime>> GetEntryDatesInRangeAsync(DateTime startDate, DateTime endDate)
     {
         var db = await JournalDatabase.GetConnectionAsync();
