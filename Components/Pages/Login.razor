@@ -1,0 +1,83 @@
+﻿@page "/login"
+@inject JournalApp.Services.AuthService Auth
+@inject NavigationManager Nav
+
+<h3>Journal Login</h3>
+
+<div class="card p-3" style="max-width:360px;">
+    <p class="text-muted">
+        @if (!Auth.HasAccount)
+        {
+            <span>Create your account</span>
+        }
+        else
+        {
+            <span>Welcome back, @Auth.Username</span>
+        }
+    </p>
+
+    @if (!Auth.HasAccount)
+    {
+        <input class="form-control mb-2"
+               placeholder="Username"
+               @bind="username" />
+    }
+
+    <input type="password"
+           class="form-control mb-2"
+           placeholder="PIN"
+           @bind="pin" />
+
+    @if (!string.IsNullOrEmpty(error))
+    {
+        <div class="text-danger mb-2">@error</div>
+    }
+
+    <button class="btn btn-primary w-100" @onclick="Submit">
+        @(!Auth.HasAccount ? "Create Account" : "Login")
+    </button>
+</div>
+
+@code {
+    private string username = "";
+    private string pin = "";
+    private string error = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Auth.InitializeAsync();   // CRITICAL
+    }
+
+    private async Task Submit()
+    {
+        error = "";
+
+        if (string.IsNullOrWhiteSpace(pin))
+        {
+            error = "PIN is required.";
+            return;
+        }
+
+        if (!Auth.HasAccount)
+        {
+            if (string.IsNullOrWhiteSpace(username))
+            {
+                error = "Username is required.";
+                return;
+            }
+
+            await Auth.RegisterAsync(username.Trim(), pin.Trim());
+            Nav.NavigateTo("/", true); // or "/today" or your main page route
+            return;
+        }
+
+        var ok = await Auth.LoginAsync(pin.Trim());
+        if (!ok)
+        {
+            error = "Incorrect PIN.";
+            return;
+        }
+
+        Nav.NavigateTo("/", true); // IMPORTANT: move away from login page
+    }
+}

@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
+using JournalApp.Services;
 
 namespace JournalApp
 {
@@ -15,9 +16,20 @@ namespace JournalApp
                 });
 
             builder.Services.AddMauiBlazorWebView();
+            builder.Services.AddSingleton<AppDataContext>();
+            builder.Services.AddSingleton<MoodCatalog>();
+            builder.Services.AddSingleton<TagCatalog>();
+            builder.Services.AddSingleton<JournalQueryService>();
+            builder.Services.AddSingleton<JournalApp.Services.DiaryEntryService>();
+            builder.Services.AddSingleton<AuthService>();
+
+
+
+
+
 
 #if DEBUG
-    		builder.Services.AddBlazorWebViewDeveloperTools();
+            builder.Services.AddBlazorWebViewDeveloperTools();
     		builder.Logging.AddDebug();
 #endif
 

@@ -86,3 +86,114 @@ h1:focus {
         padding-left: env(safe-area-inset-left);
     }
 }
+:root {
+    --bg: #fbf7ff; /* lavender-white */
+    --card: #ffffff;
+    --ink: #2f2f38;
+    --muted: #6f6f7a;
+    --primary: #a9c6ff; /* pastel blue */
+    --primary-ink: #1f2a44;
+    --accent: #ffd6e7; /* pastel pink */
+    --accent-ink: #4a1f33;
+    --border: #ece7f2;
+    --shadow: 0 10px 24px rgba(36, 20, 66, 0.08);
+    --radius: 18px;
+}
+
+/* page background + typography */
+.pastel-page {
+    color: var(--ink);
+    background: radial-gradient(800px 400px at 10% 0%, #ffeef6 0%, transparent 60%), radial-gradient(800px 500px at 90% 10%, #eef6ff 0%, transparent 60%), var(--bg);
+    min-height: 100%;
+    padding: 18px;
+}
+
+/* cards */
+.pastel-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+}
+
+/* headings */
+.pastel-title {
+    font-weight: 700;
+    letter-spacing: 0.2px;
+}
+
+.pastel-subtitle {
+    color: var(--muted);
+    font-size: 0.95rem;
+}
+
+/* inputs */
+.pastel-input, .pastel-select, .pastel-textarea {
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 10px 12px;
+    background: #fff;
+}
+
+.pastel-textarea {
+    resize: vertical;
+}
+
+/* buttons */
+.pastel-btn {
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 10px 14px;
+    font-weight: 600;
+}
+
+.pastel-btn-primary {
+    background: var(--primary);
+    color: var(--primary-ink);
+}
+
+.pastel-btn-soft {
+    background: var(--accent);
+    color: var(--accent-ink);
+}
+
+.pastel-btn-outline {
+    background: transparent;
+}
+
+.pastel-btn-danger {
+    background: #ffd7d7;
+    color: #5a1d1d;
+}
+
+/* small pill toggles */
+.pill {
+    border: 1px solid var(--border);
+    background: #fff;
+    border-radius: 999px;
+    padding: 7px 12px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    user-select: none;
+}
+
+    .pill.on {
+        background: #e9f0ff;
+        border-color: #d6e3ff;
+    }
+
+    .pill:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+/* small badges */
+.pastel-badge {
+    display: inline-block;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: #f2edff;
+    border: 1px solid var(--border);
+    font-size: 0.85rem;
+    color: var(--muted);
+}

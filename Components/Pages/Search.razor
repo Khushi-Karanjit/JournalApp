@@ -1,0 +1,215 @@
+﻿@page "/search"
+@using JournalApp.Models
+@inject JournalApp.Services.AppDataContext DataContext
+@inject JournalApp.Services.MoodCatalog MoodCatalog
+@inject JournalApp.Services.JournalQueryService QueryService
+@inject NavigationManager Nav
+
+<h3 class="mb-3">Journal App</h3>
+
+<!-- Top row: Search + Filter + Sort + Button -->
+<div class="row g-3 align-items-center mb-3">
+    <div class="col-md-5">
+        <input class="form-control"
+               placeholder="Search entries..."
+               @bind="searchText" />
+    </div>
+
+    <div class="col-md-3">
+        <select class="form-select" @bind="moodFilter">
+            <option value="">Filter by Mood</option>
+            @foreach (var m in moods)
+            {
+                <option value="@m">@m</option>
+            }
+        </select>
+    </div>
+
+    <div class="col-md-2">
+        <select class="form-select" @bind="sortOption">
+            <option value="date_desc">Sort by Date</option>
+            <option value="date_asc">Oldest First</option>
+            <option value="title_asc">Title A–Z</option>
+            <option value="title_desc">Title Z–A</option>
+        </select>
+    </div>
+
+    <div class="col-md-2 d-grid">
+        <button class="btn btn-primary" @onclick="OnSearchClicked">
+            Search
+        </button>
+    </div>
+</div>
+
+<!-- Results List -->
+<div class="card">
+    <div class="card-body p-0">
+        @if (pagedResults.Count == 0)
+        {
+            <div class="p-3 text-muted">No matching entries found.</div>
+        }
+        else
+        {
+            @foreach (var e in pagedResults)
+            {
+                <div class="d-flex align-items-center justify-content-between border-bottom p-3">
+                    <div class="flex-grow-1">
+                        <div class="fw-semibold">
+                            @e.EntryDay.ToString("yyyy-MM-dd") - @e.Title
+                        </div>
+                        <div class="text-muted" style="font-size:0.9rem;">
+                            Mood: @(e.Moods.Count > 0 ? e.Moods[0].ToString() : "—") • Words: @e.WordCount
+
+                        </div>
+                    </div>
+
+                    <div class="d-flex align-items-center gap-2">
+                        <button class="btn btn-sm btn-outline-primary"
+                                @onclick="() => OpenEntry(e.EntryDay)">
+                            View/Edit
+                        </button>
+
+                        <button class="btn btn-sm btn-outline-danger"
+                                title="Delete"
+                                @onclick="() => DeleteEntry(e.EntryDay)">
+                            ✕
+                        </button>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+<!-- Pagination -->
+<div class="d-flex justify-content-center align-items-center gap-3 mt-4 mb-4">
+    <button class="btn btn-outline-secondary btn-sm"
+            disabled="@(currentPage <= 1)"
+            @onclick="PrevPage">
+        Previous
+    </button>
+
+    <div class="text-muted">
+        Page @currentPage of @totalPages
+    </div>
+
+    <button class="btn btn-outline-secondary btn-sm"
+            disabled="@(currentPage >= totalPages)"
+            @onclick="NextPage">
+        Next
+    </button>
+</div>
+
+@code {
+    // Filters
+    private string searchText = "";
+    private string moodFilter = "";
+    private string sortOption = "date_desc";
+
+    // Mood dropdown values
+    private List<Mood> moods = new();
+
+    // Data
+    private List<DiaryEntry> allResults = new();
+    private List<DiaryEntry> pagedResults = new();
+
+    // Pagination
+    private int pageSize = 5;
+    private int currentPage = 1;
+    private int totalPages = 1;
+
+    protected override void OnInitialized()
+    {
+        moods = MoodCatalog.GetAvailableMoods();
+        RefreshResults(); // initial load
+    }
+
+    private void OnSearchClicked()
+    {
+        currentPage = 1;
+        RefreshResults();
+    }
+
+    private void RefreshResults()
+    {
+        var uid = DataContext.ActiveUser.UserId;
+
+        Mood? mood = null;
+        if (!string.IsNullOrWhiteSpace(moodFilter) && Enum.TryParse<Mood>(moodFilter, out var parsed))
+            mood = parsed;
+
+        // Search by title/content + mood filter (date/tags optional for now)
+        allResults = QueryService.FindEntries(
+            uid,
+            searchText,
+            start: null,
+            end: null,
+            mood: mood,
+            requiredTags: null
+        );
+
+        // Sorting
+        allResults = sortOption switch
+        {
+            "date_asc" => allResults.OrderBy(e => e.EntryDay).ToList(),
+            "date_desc" => allResults.OrderByDescending(e => e.EntryDay).ToList(),
+            "title_asc" => allResults.OrderBy(e => e.Title).ToList(),
+            "title_desc" => allResults.OrderByDescending(e => e.Title).ToList(),
+            _ => allResults.OrderByDescending(e => e.EntryDay).ToList(),
+        };
+
+        // Pagination
+        totalPages = Math.Max(1, (int)Math.Ceiling(allResults.Count / (double)pageSize));
+        if (currentPage > totalPages) currentPage = totalPages;
+        if (currentPage < 1) currentPage = 1;
+
+        pagedResults = allResults
+            .Skip((currentPage - 1) * pageSize)
+            .Take(pageSize)
+            .ToList();
+    }
+
+    private void PrevPage()
+    {
+        if (currentPage > 1)
+        {
+            currentPage--;
+            RefreshResults();
+        }
+    }
+
+    private void NextPage()
+    {
+        if (currentPage < totalPages)
+        {
+            currentPage++;
+            RefreshResults();
+        }
+    }
+
+    private void OpenEntry(DateOnly day)
+    {
+        // Milestone 1: simplest—navigate to today page.
+        // If later you add entry detail by date, we can route properly.
+        Nav.NavigateTo("/today");
+    }
+
+    private void DeleteEntry(DateOnly day)
+    {
+        var uid = DataContext.ActiveUser.UserId;
+
+        var target = DataContext.Entries
+            .FirstOrDefault(e => e.OwnerId == uid && e.EntryDay == day);
+
+        if (target is null) return;
+
+        DataContext.Entries.Remove(target);
+
+        // If current page becomes empty, go back one page
+        var remainingCount = DataContext.Entries.Count(e => e.OwnerId == uid);
+        if ((currentPage - 1) * pageSize >= remainingCount)
+            currentPage = Math.Max(1, currentPage - 1);
+
+        RefreshResults();
+    }
+}
