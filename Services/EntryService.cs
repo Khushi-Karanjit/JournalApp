@@ -49,6 +49,18 @@ public class EntryService
             .ToListAsync();
     }
 
+    public async Task<List<JournalEntry>> GetEntriesInRangeAsync(DateTime startDate, DateTime endDate)
+    {
+        var db = await JournalDatabase.GetConnectionAsync();
+        var start = JournalDatabase.NormalizeEntryDate(startDate);
+        var end = JournalDatabase.NormalizeEntryDate(endDate);
+
+        return await db.Table<JournalEntry>()
+            .Where(e => e.EntryDate >= start && e.EntryDate <= end)
+            .OrderByDescending(e => e.EntryDate)
+            .ToListAsync();
+    }
+
     public async Task<int> GetEntryCountAsync()
     {
         var db = await JournalDatabase.GetConnectionAsync();

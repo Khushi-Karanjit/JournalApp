@@ -111,7 +111,7 @@
                     <div class="d-flex align-items-center gap-2">
                         <button class="btn btn-sm btn-outline-primary"
                                 @onclick="() => OpenEntry(e.EntryDate)">
-                            View/Edit
+                            View
                         </button>
 
                         <button class="btn btn-sm btn-outline-danger"
@@ -247,7 +247,8 @@
 
     private void OpenEntry(DateTime day)
     {
-        Nav.NavigateTo("/today");
+        var formatted = day.ToString("yyyy-MM-dd");
+        Nav.NavigateTo($"/entry?date={formatted}");
     }
 
     private async Task DeleteEntry(DateTime day)

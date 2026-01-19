@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging;
+using CommunityToolkit.Maui;
 using JournalApp.Services;
 
 namespace JournalApp
@@ -10,6 +11,7 @@ namespace JournalApp
             var builder = MauiApp.CreateBuilder();
             builder
                 .UseMauiApp<App>()
+                .UseMauiCommunityToolkit()
                 .ConfigureFonts(fonts =>
                 {
                     fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
@@ -27,15 +29,11 @@ namespace JournalApp
             builder.Services.AddSingleton<MoodService>();
             builder.Services.AddSingleton<TagService>();
             builder.Services.AddSingleton<ThemeService>();
-
-
-
-
-
+            builder.Services.AddSingleton<PdfExportService>();
 
 #if DEBUG
             builder.Services.AddBlazorWebViewDeveloperTools();
-    		builder.Logging.AddDebug();
+            builder.Logging.AddDebug();
 #endif
 
             return builder.Build();

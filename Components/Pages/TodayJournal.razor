@@ -6,7 +6,7 @@
 @inject IJSRuntime JS
 <h3>Today's Journal</h3>
 <p class="text-muted mb-3">
-    One entry per day - @DateOnly.FromDateTime(DateTime.Now).ToString("dddd, MMM dd")
+    One entry per day - @DisplayDate.ToString("dddd, MMM dd")
 </p>
 
 @if (!string.IsNullOrWhiteSpace(_status))
@@ -190,6 +190,7 @@
     private string _status = "";
     private bool _editorReady;
     private string? _pendingContent;
+    private DateTime? _loadedDate;
 
     private List<MoodGroup> _moodGroups = new();
     private int _primaryMoodId;
@@ -216,6 +217,16 @@
         await LoadTodayAsync();
     }
 
+    protected override async Task OnParametersSetAsync()
+    {
+        var target = DisplayDate.Date;
+        if (_loadedDate != target)
+        {
+            _loadedDate = target;
+            await LoadTodayAsync();
+        }
+    }
+
     private async Task LoadTodayAsync()
     {
         var targetDate = Date?.Date ?? DateTime.Today;
@@ -234,7 +245,7 @@
             _primaryMoodId = 0;
             SetEditorContent(_content);
 
-            _status = "No entry yet for today. Write something and save.";
+            _status = $"No entry yet for {DisplayDate:dddd, MMM dd}. Write something and save.";
             return;
         }
 
@@ -253,7 +264,7 @@
             _selectedTagIds.Add(t.Id);
 
         RefreshSelectedTags();
-        _status = "Loaded today's entry.";
+        _status = $"Loaded entry for {DisplayDate:dddd, MMM dd}.";
     }
 
     private void ToggleSecondaryMood(int moodId)
@@ -357,6 +368,8 @@
     }
 
     private sealed record MoodGroup(string Category, List<Mood> Moods);
+
+    private DateTime DisplayDate => Date?.Date ?? DateTime.Today;
 
     private void SetEditorContent(string html)
     {

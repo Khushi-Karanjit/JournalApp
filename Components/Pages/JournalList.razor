@@ -106,6 +106,6 @@
     private void OpenEntry(DateTime date)
     {
         var formatted = date.ToString("yyyy-MM-dd");
-        Nav.NavigateTo($"/today?date={formatted}");
+        Nav.NavigateTo($"/entry?date={formatted}");
     }
 }

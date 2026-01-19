@@ -1,0 +1,93 @@
+@page "/entry"
+@using JournalApp.Models.Sqlite
+@inject JournalApp.Services.EntryService EntryService
+@inject JournalApp.Services.MoodService MoodService
+@inject JournalApp.Services.TagService TagService
+@inject NavigationManager Nav
+
+<h3 class="mb-3">Journal Entry</h3>
+
+@if (_entry is null)
+{
+    <div class="card p-3" style="max-width:720px;">
+        <div class="text-muted">No entry found for this date.</div>
+        <button class="btn btn-primary mt-3" @onclick="GoToEdit">Create Entry</button>
+    </div>
+}
+else
+{
+    <div class="card p-3" style="max-width:720px;">
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                <div class="text-muted">@_entry.EntryDate.ToString("yyyy-MM-dd")</div>
+                <h5 class="mb-2">@_entry.Title</h5>
+            </div>
+            <button class="btn btn-outline-secondary btn-sm" @onclick="GoToEdit">Edit</button>
+        </div>
+
+        <div class="mb-2">
+            <strong>Mood:</strong> @_primaryMood
+            @if (_secondaryMoods.Count > 0)
+            {
+                <span class="text-muted"> (+@string.Join(", ", _secondaryMoods))</span>
+            }
+        </div>
+
+        <div class="mb-2">
+            <strong>Tags:</strong> @(_tags.Count > 0 ? string.Join(", ", _tags) : "-")
+        </div>
+
+        <div class="mt-3">
+            <strong>Content:</strong>
+            <div class="mt-2" style="white-space: normal;">
+                @((MarkupString)(_entry.Content ?? ""))
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [SupplyParameterFromQuery]
+    public DateTime? Date { get; set; }
+
+    private JournalEntry? _entry;
+    private string _primaryMood = "-";
+    private readonly List<string> _secondaryMoods = new();
+    private readonly List<string> _tags = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var targetDate = Date?.Date ?? DateTime.Today;
+        _entry = await EntryService.GetByDateAsync(targetDate);
+
+        if (_entry is null)
+            return;
+
+        var moods = await MoodService.GetAllAsync();
+        var moodById = moods.ToDictionary(m => m.Id, m => m.Name);
+
+        _primaryMood = moodById.TryGetValue(_entry.PrimaryMoodId, out var p) ? p : "-";
+
+        if (_entry.SecondaryMood1Id.HasValue &&
+            moodById.TryGetValue(_entry.SecondaryMood1Id.Value, out var s1))
+        {
+            _secondaryMoods.Add(s1);
+        }
+
+        if (_entry.SecondaryMood2Id.HasValue &&
+            moodById.TryGetValue(_entry.SecondaryMood2Id.Value, out var s2))
+        {
+            _secondaryMoods.Add(s2);
+        }
+
+        var tags = await TagService.GetTagsForEntryAsync(_entry.Id);
+        _tags.AddRange(tags.Select(t => t.Name));
+    }
+
+    private void GoToEdit()
+    {
+        var targetDate = Date?.Date ?? DateTime.Today;
+        var formatted = targetDate.ToString("yyyy-MM-dd");
+        Nav.NavigateTo($"/today?date={formatted}");
+    }
+}

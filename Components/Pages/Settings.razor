@@ -1,6 +1,7 @@
 @page "/settings"
 @inject JournalApp.Services.ThemeService ThemeService
 @inject JournalApp.Services.AuthService Auth
+@inject JournalApp.Services.PdfExportService PdfExportService
 @inject IJSRuntime JS
 
 <h3 class="mb-3">Settings</h3>
@@ -31,6 +32,29 @@
     }
 
     <button class="btn btn-primary" @onclick="ChangePin">Update PIN</button>
+</div>
+
+<div class="card p-3 mt-3" style="max-width:480px;">
+    <h6 class="mb-2">Export PDF</h6>
+    <div class="row g-2">
+        <div class="col-6">
+            <input type="date" class="form-control"
+                   @bind-value="exportStart"
+                   @bind-value:format="yyyy-MM-dd" />
+        </div>
+        <div class="col-6">
+            <input type="date" class="form-control"
+                   @bind-value="exportEnd"
+                   @bind-value:format="yyyy-MM-dd" />
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(exportStatus))
+    {
+        <div class="text-muted mt-2">@exportStatus</div>
+    }
+
+    <button class="btn btn-primary mt-2" @onclick="ExportPdf">Export</button>
 </div>
 
 @code {
@@ -82,5 +106,23 @@
         newPin = "";
         confirmPin = "";
         pinStatus = "PIN updated.";
+    }
+
+    private DateTime exportStart = DateTime.Today.AddDays(-30);
+    private DateTime exportEnd = DateTime.Today;
+    private string exportStatus = "";
+
+    private async Task ExportPdf()
+    {
+        exportStatus = "Exporting...";
+        try
+        {
+            var result = await PdfExportService.ExportEntriesAsync(exportStart, exportEnd);
+            exportStatus = result.Message;
+        }
+        catch (Exception ex)
+        {
+            exportStatus = ex.Message;
+        }
     }
 }
