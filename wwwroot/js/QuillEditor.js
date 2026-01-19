@@ -1,6 +1,11 @@
-﻿let quill;
+let quill;
 window.initQuill = (divId) => {
-    quill = new Quill(`#${divId}`, { theme: "snow" });
+    quill = new Quill(`#${divId}`, {
+        theme: "snow",
+        modules: {
+            toolbar: "#journal-toolbar"
+        }
+    });
 }
 
 window.getQuillHtml = () => { return quill.root.innerHTML; }

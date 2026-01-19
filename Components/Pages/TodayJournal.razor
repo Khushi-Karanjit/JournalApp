@@ -27,11 +27,31 @@
 
             <div class="mb-3">
                 <label class="form-label">Content</label>
+                <div id="journal-toolbar" class="mb-2">
+                    <span class="ql-formats">
+                        <button class="ql-bold"></button>
+                        <button class="ql-italic"></button>
+                    </span>
+                    <span class="ql-formats">
+                        <select class="ql-header">
+                            <option value="1"></option>
+                            <option value="2"></option>
+                            <option selected></option>
+                        </select>
+                    </span>
+                    <span class="ql-formats">
+                        <button class="ql-list" value="ordered"></button>
+                        <button class="ql-list" value="bullet"></button>
+                    </span>
+                    <span class="ql-formats">
+                        <button class="ql-link"></button>
+                    </span>
+                </div>
                 @* <textarea class="form-control"
                           rows="10"
                           placeholder="Write here..."
                           @bind="_content"></textarea> *@
-                          <div id ="journal">
+                          <div id="journal">
 
                           </div>
                 <div class="form-text">
@@ -50,8 +70,15 @@
         </div>
     </div>
 
-    <!-- Mood + Tags -->
+    <!-- Preview + Mood + Tags -->
     <div class="col-lg-4">
+        <div class="card p-3 mb-3">
+            <h5 class="mb-3">Preview</h5>
+            <div class="preview-box">
+                @((MarkupString)(_content ?? ""))
+            </div>
+        </div>
+
         <div class="card p-3 mb-3">
             <h5 class="mb-3">Mood</h5>
 
@@ -214,6 +241,7 @@
 
         _availableTags = await TagService.GetAllAsync();
 
+        _loadedDate = DisplayDate.Date;
         await LoadTodayAsync();
     }
 
@@ -328,6 +356,17 @@
         }
 
         _content = await JS.InvokeAsync<string>("getQuillHtml");
+        if (string.IsNullOrWhiteSpace(_title) && string.IsNullOrWhiteSpace(_content))
+        {
+            _status = "Add a title or some content before saving.";
+            return;
+        }
+
+        var action = _todayEntry is null ? "save" : "update";
+        var confirm = await JS.InvokeAsync<bool>(
+            "confirm",
+            $"Do you want to {action} the entry for {DisplayDate:dddd, MMM dd}?");
+        if (!confirm) return;
         var secondary = _secondaryMoodIds.Take(2).ToList();
 
         var entry = _todayEntry ?? new JournalEntry();
@@ -337,6 +376,7 @@
         entry.PrimaryMoodId = _primaryMoodId;
         entry.SecondaryMood1Id = secondary.Count > 0 ? secondary[0] : null;
         entry.SecondaryMood2Id = secondary.Count > 1 ? secondary[1] : null;
+        entry.Category = GetCategoryForMoodId(_primaryMoodId);
 
         _todayEntry = await EntryService.UpsertAsync(entry);
         await TagService.SetTagsForEntryAsync(_todayEntry.Id, _selectedTagIds.ToList());
@@ -351,13 +391,17 @@
     {
         if (_todayEntry is null) return;
 
-        var confirm = await JS.InvokeAsync<bool>("confirm", "Delete today's entry?");
+        var confirm = await JS.InvokeAsync<bool>(
+            "confirm",
+            $"Delete entry for {DisplayDate:dddd, MMM dd}?");
         if (!confirm) return;
 
         var targetDate = Date?.Date ?? DateTime.Today;
         var ok = await EntryService.DeleteByDateAsync(targetDate);
 
-        _status = ok ? "Deleted today's entry." : "No entry to delete.";
+        _status = ok
+            ? $"Deleted entry for {DisplayDate:dddd, MMM dd}."
+            : "No entry to delete.";
         await LoadTodayAsync();
     }
 
@@ -378,4 +422,27 @@
         else
             _pendingContent = html ?? "";
     }
+
+    private string GetCategoryForMoodId(int moodId)
+    {
+        foreach (var group in _moodGroups)
+        {
+            if (group.Moods.Any(m => m.Id == moodId))
+                return group.Category;
+        }
+
+        return "";
+    }
 }
+
+<style>
+    .preview-box {
+        min-height: 120px;
+        max-height: 240px;
+        overflow: auto;
+        padding: 0.5rem;
+        border: 1px solid var(--border);
+        border-radius: 0.375rem;
+        background: var(--surface);
+    }
+</style>

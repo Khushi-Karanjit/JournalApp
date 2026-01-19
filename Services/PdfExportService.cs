@@ -23,6 +23,7 @@ public class PdfExportService
 
         var moods = await db.Table<Mood>().ToListAsync();
         var moodById = moods.ToDictionary(m => m.Id, m => m.Name);
+        var categoryByMoodId = moods.ToDictionary(m => m.Id, m => m.Category);
 
         var tags = await db.Table<Tag>().ToListAsync();
         var tagById = tags.ToDictionary(t => t.Id, t => t.Name);
@@ -35,7 +36,7 @@ public class PdfExportService
         var fileName = $"Journal_{startDate:yyyyMMdd}_{endDate:yyyyMMdd}.pdf";
 
         QuestPDF.Settings.License = LicenseType.Community;
-        var pdfBytes = BuildDocument(entries, moodById, tagById, tagsByEntry);
+        var pdfBytes = BuildDocument(entries, moodById, categoryByMoodId, tagById, tagsByEntry);
 
         using var stream = new MemoryStream(pdfBytes);
         var result = await FileSaver.Default.SaveAsync(fileName, stream);
@@ -48,6 +49,7 @@ public class PdfExportService
     private static byte[] BuildDocument(
         List<JournalEntry> entries,
         Dictionary<int, string> moodById,
+        Dictionary<int, string> categoryByMoodId,
         Dictionary<int, string> tagById,
         Dictionary<int, List<int>> tagsByEntry)
     {
@@ -65,6 +67,9 @@ public class PdfExportService
                     foreach (var entry in entries.OrderByDescending(e => e.EntryDate))
                     {
                         var primary = moodById.TryGetValue(entry.PrimaryMoodId, out var p) ? p : "-";
+                        var category = !string.IsNullOrWhiteSpace(entry.Category)
+                            ? entry.Category
+                            : (categoryByMoodId.TryGetValue(entry.PrimaryMoodId, out var c) ? c : "-");
                         var secondary = new List<string>();
                         if (entry.SecondaryMood1Id.HasValue && moodById.TryGetValue(entry.SecondaryMood1Id.Value, out var s1))
                             secondary.Add(s1);
@@ -79,6 +84,7 @@ public class PdfExportService
                         {
                             item.Item().Text($"{entry.EntryDate:yyyy-MM-dd} - {entry.Title}").SemiBold();
                             item.Item().Text($"Mood: {primary}{(secondary.Count > 0 ? " (+" + string.Join(", ", secondary) + ")" : "")}");
+                            item.Item().Text($"Category: {category}");
                             item.Item().Text($"Tags: {(tagNames.Count > 0 ? string.Join(", ", tagNames) : "-")}");
                             item.Item().Text("Content:");
                             item.Item().Text(ToPlainText(entry.Content ?? ""));

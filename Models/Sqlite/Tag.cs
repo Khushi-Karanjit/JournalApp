@@ -12,4 +12,6 @@ public class Tag
     public string Name { get; set; } = "";
 
     public bool IsPrebuilt { get; set; }
+
+    public string Category { get; set; } = "";
 }

@@ -15,7 +15,7 @@ public class TagService
 
     public async Task<Tag> AddCustomAsync(string name)
     {
-        return await JournalDatabase.AddTagAsync(name, isPrebuilt: false);
+        return await JournalDatabase.AddTagAsync(name, isPrebuilt: false, category: "Custom");
     }
 
     public async Task SetTagsForEntryAsync(int entryId, List<int> tagIds)

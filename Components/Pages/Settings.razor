@@ -114,6 +114,12 @@
 
     private async Task ExportPdf()
     {
+        if (exportEnd.Date < exportStart.Date)
+        {
+            exportStatus = "End date must be after start date.";
+            return;
+        }
+
         exportStatus = "Exporting...";
         try
         {

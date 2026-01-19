@@ -34,6 +34,10 @@ else
         </div>
 
         <div class="mb-2">
+            <strong>Category:</strong> @_category
+        </div>
+
+        <div class="mb-2">
             <strong>Tags:</strong> @(_tags.Count > 0 ? string.Join(", ", _tags) : "-")
         </div>
 
@@ -53,6 +57,7 @@ else
     private JournalEntry? _entry;
     private string _primaryMood = "-";
     private readonly List<string> _secondaryMoods = new();
+    private string _category = "-";
     private readonly List<string> _tags = new();
 
     protected override async Task OnInitializedAsync()
@@ -67,6 +72,9 @@ else
         var moodById = moods.ToDictionary(m => m.Id, m => m.Name);
 
         _primaryMood = moodById.TryGetValue(_entry.PrimaryMoodId, out var p) ? p : "-";
+        _category = string.IsNullOrWhiteSpace(_entry.Category)
+            ? GetCategoryFromMood(moods, _entry.PrimaryMoodId)
+            : _entry.Category;
 
         if (_entry.SecondaryMood1Id.HasValue &&
             moodById.TryGetValue(_entry.SecondaryMood1Id.Value, out var s1))
@@ -89,5 +97,11 @@ else
         var targetDate = Date?.Date ?? DateTime.Today;
         var formatted = targetDate.ToString("yyyy-MM-dd");
         Nav.NavigateTo($"/today?date={formatted}");
+    }
+
+    private static string GetCategoryFromMood(List<Mood> moods, int moodId)
+    {
+        var mood = moods.FirstOrDefault(m => m.Id == moodId);
+        return mood is null ? "-" : mood.Category;
     }
 }

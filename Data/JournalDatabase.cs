@@ -29,6 +29,9 @@ public static class JournalDatabase
             await _database.CreateTableAsync<Tag>();
             await _database.CreateTableAsync<EntryTag>();
 
+            await EnsureJournalEntryCategoryColumnAsync();
+            await EnsureTagCategoryColumnAsync();
+
             await SeedAsync();
 
             _initialized = true;
@@ -77,7 +80,7 @@ public static class JournalDatabase
         return entry;
     }
 
-    public static async Task<Tag> AddTagAsync(string name, bool isPrebuilt)
+    public static async Task<Tag> AddTagAsync(string name, bool isPrebuilt, string category)
     {
         if (_database is null) throw new InvalidOperationException("Database not initialized.");
 
@@ -94,7 +97,8 @@ public static class JournalDatabase
         var tag = new Tag
         {
             Name = normalized,
-            IsPrebuilt = isPrebuilt
+            IsPrebuilt = isPrebuilt,
+            Category = category ?? ""
         };
 
         await _database.InsertAsync(tag);
@@ -107,6 +111,7 @@ public static class JournalDatabase
 
         await SeedMoodsAsync();
         await SeedTagsAsync();
+        await SeedTagCategoriesAsync();
     }
 
     private static async Task SeedMoodsAsync()
@@ -176,8 +181,63 @@ public static class JournalDatabase
             await _database.InsertAsync(new Tag
             {
                 Name = normalized,
-                IsPrebuilt = true
+                IsPrebuilt = true,
+                Category = MapTagCategory(normalized)
             });
         }
+    }
+
+    private static async Task EnsureTagCategoryColumnAsync()
+    {
+        if (_database is null) throw new InvalidOperationException("Database not initialized.");
+
+        var columns = await _database.QueryAsync<TableInfoRow>("PRAGMA table_info(Tag)");
+        var hasCategory = columns.Any(c => c.Name.Equals("Category", StringComparison.OrdinalIgnoreCase));
+        if (hasCategory) return;
+
+        await _database.ExecuteAsync("ALTER TABLE Tag ADD COLUMN Category TEXT");
+    }
+
+    private static async Task SeedTagCategoriesAsync()
+    {
+        if (_database is null) throw new InvalidOperationException("Database not initialized.");
+
+        var tags = await _database.Table<Tag>().ToListAsync();
+        foreach (var tag in tags)
+        {
+            if (!string.IsNullOrWhiteSpace(tag.Category)) continue;
+            tag.Category = MapTagCategory(tag.Name);
+            await _database.UpdateAsync(tag);
+        }
+    }
+
+    private static string MapTagCategory(string name)
+    {
+        return name switch
+        {
+            "Work" or "Career" or "Studies" or "Projects" or "Planning" or "Reflection" => "Work & Study",
+            "Family" or "Friends" or "Relationships" or "Parenting" => "Relationships",
+            "Health" or "Fitness" or "Self-care" or "Exercise" or "Yoga" or "Meditation" => "Health",
+            "Travel" or "Nature" or "Vacation" or "Holiday" or "Birthday" or "Celebration" => "Travel & Events",
+            "Hobbies" or "Reading" or "Writing" or "Cooking" or "Music" or "Shopping" => "Lifestyle",
+            "Finance" or "Spirituality" or "Personal Growth" => "Wellbeing",
+            _ => "Custom"
+        };
+    }
+
+    private static async Task EnsureJournalEntryCategoryColumnAsync()
+    {
+        if (_database is null) throw new InvalidOperationException("Database not initialized.");
+
+        var columns = await _database.QueryAsync<TableInfoRow>("PRAGMA table_info(JournalEntry)");
+        var hasCategory = columns.Any(c => c.Name.Equals("Category", StringComparison.OrdinalIgnoreCase));
+        if (hasCategory) return;
+
+        await _database.ExecuteAsync("ALTER TABLE JournalEntry ADD COLUMN Category TEXT");
+    }
+
+    private sealed class TableInfoRow
+    {
+        public string Name { get; set; } = "";
     }
 }
