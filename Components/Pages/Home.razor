@@ -5,7 +5,7 @@
 
 <div class="card p-3" style="max-width:520px;">
     <h5 class="mb-2">Streaks</h5>
-    @if (_summary is null)
+    @if (_streakSummary is null)
     {
         <div class="text-muted">Loading...</div>
     }
@@ -14,18 +14,138 @@
         <div class="d-flex gap-4">
             <div>
                 <div class="text-muted" style="font-size:0.85rem;">Current streak</div>
-                <div class="fs-4 fw-semibold">@_summary.CurrentStreakDays</div>
+                <div class="fs-4 fw-semibold">@_streakSummary.CurrentStreakDays</div>
             </div>
             <div>
                 <div class="text-muted" style="font-size:0.85rem;">Longest streak</div>
-                <div class="fs-4 fw-semibold">@_summary.LongestStreakDays</div>
+                <div class="fs-4 fw-semibold">@_streakSummary.LongestStreakDays</div>
             </div>
         </div>
 
         <div class="mt-3">
             <div class="text-muted" style="font-size:0.85rem;">Missed days (last 30 days)</div>
             <div class="mt-1">
-                @_summary.MissedDates.Count
+                @_streakSummary.MissedDates.Count
+            </div>
+        </div>
+    }
+</div>
+
+<div class="card p-3 mt-3">
+    <div class="d-flex align-items-center justify-content-between mb-2">
+        <h5 class="mb-0">Analytics</h5>
+    </div>
+
+    <div class="row g-3 align-items-center mb-3">
+        <div class="col-md-3">
+            <input type="date"
+                   class="form-control"
+                   @bind-value="_startDate"
+                   @bind-value:format="yyyy-MM-dd" />
+        </div>
+        <div class="col-md-3">
+            <input type="date"
+                   class="form-control"
+                   @bind-value="_endDate"
+                   @bind-value:format="yyyy-MM-dd" />
+        </div>
+        <div class="col-md-2 d-grid">
+            <button class="btn btn-primary" @onclick="ApplyFilter">
+                Apply
+            </button>
+        </div>
+    </div>
+
+    @if (_analyticsSummary is null)
+    {
+        <div class="text-muted">Loading...</div>
+    }
+    else
+    {
+        <div class="row g-3">
+            <div class="col-md-4">
+                <div class="card p-3 h-100">
+                    <h6 class="mb-2">Mood distribution (category)</h6>
+                    @if (_analyticsSummary.MoodCategoryCounts.Count == 0)
+                    {
+                        <div class="text-muted">No data.</div>
+                    }
+                    else
+                    {
+                        <ul class="mb-0">
+                            @foreach (var c in _analyticsSummary.MoodCategoryCounts)
+                            {
+                                <li>@c.Category: @c.Count</li>
+                            }
+                        </ul>
+                    }
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card p-3 h-100">
+                    <h6 class="mb-2">Most frequent mood</h6>
+                    <div class="fs-4 fw-semibold">@_analyticsSummary.MostFrequentMood</div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card p-3 h-100">
+                    <h6 class="mb-2">Top tags</h6>
+                    @if (_analyticsSummary.TagCounts.Count == 0)
+                    {
+                        <div class="text-muted">No data.</div>
+                    }
+                    else
+                    {
+                        <ul class="mb-0">
+                            @foreach (var t in _analyticsSummary.TagCounts.Take(5))
+                            {
+                                <li>@t.Name: @t.Count</li>
+                            }
+                        </ul>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-3 mt-1">
+            <div class="col-md-6">
+                <div class="card p-3 h-100">
+                    <h6 class="mb-2">Tag breakdown</h6>
+                    @if (_analyticsSummary.TagCounts.Count == 0)
+                    {
+                        <div class="text-muted">No data.</div>
+                    }
+                    else
+                    {
+                        <ul class="mb-0">
+                            @foreach (var t in _analyticsSummary.TagCounts)
+                            {
+                                <li>@t.Name: @t.Count</li>
+                            }
+                        </ul>
+                    }
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card p-3 h-100">
+                    <h6 class="mb-2">Word count trend</h6>
+                    @if (_analyticsSummary.WordCountTrend.Count == 0)
+                    {
+                        <div class="text-muted">No data.</div>
+                    }
+                    else
+                    {
+                        <ul class="mb-0">
+                            @foreach (var p in _analyticsSummary.WordCountTrend)
+                            {
+                                <li>@p.Date.ToString("yyyy-MM-dd"): @p.Count</li>
+                            }
+                        </ul>
+                    }
+                </div>
             </div>
         </div>
     }
@@ -33,10 +153,20 @@
 
 @code {
     private readonly StreakService _streakService = new();
-    private StreakService.StreakSummary? _summary;
+    private readonly AnalyticsService _analyticsService = new();
+    private StreakService.StreakSummary? _streakSummary;
+    private AnalyticsService.AnalyticsSummary? _analyticsSummary;
+    private DateTime _startDate = DateTime.Today.AddDays(-30);
+    private DateTime _endDate = DateTime.Today;
 
     protected override async Task OnInitializedAsync()
     {
-        _summary = await _streakService.GetSummaryAsync(30);
+        _streakSummary = await _streakService.GetSummaryAsync(30);
+        _analyticsSummary = await _analyticsService.GetSummaryAsync(_startDate, _endDate);
+    }
+
+    private async Task ApplyFilter()
+    {
+        _analyticsSummary = await _analyticsService.GetSummaryAsync(_startDate, _endDate);
     }
 }

@@ -86,7 +86,7 @@
 
     private string GetCellClass(bool inMonth, bool hasEntry)
     {
-        if (!inMonth) return "bg-light text-muted";
+        if (!inMonth) return "out-month";
         return hasEntry ? "has-entry" : "";
     }
 
@@ -115,8 +115,22 @@
         padding: 0.25rem;
     }
 
+    .calendar .btn {
+        color: var(--text);
+        background: transparent;
+    }
+
+    .calendar .btn:disabled {
+        color: var(--text-muted);
+    }
+
     .calendar .has-entry {
-        background: #e7f1ff;
-        border-color: #b6d4fe;
+        background: var(--surface-2);
+        border-color: var(--primary);
+    }
+
+    .calendar .out-month {
+        background: var(--surface-2);
+        color: var(--text-muted);
     }
 </style>

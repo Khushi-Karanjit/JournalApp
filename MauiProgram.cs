@@ -26,6 +26,7 @@ namespace JournalApp
             builder.Services.AddSingleton<EntryService>();
             builder.Services.AddSingleton<MoodService>();
             builder.Services.AddSingleton<TagService>();
+            builder.Services.AddSingleton<ThemeService>();
 
 
 

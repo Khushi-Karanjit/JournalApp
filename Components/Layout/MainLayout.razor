@@ -1,7 +1,21 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
 @inject JournalApp.Services.AuthService Auth
+@inject JournalApp.Services.ThemeService ThemeService
+@inject IJSRuntime JS
 
-@if (!Auth.IsLoggedIn)
+@if (!_authReady)
+{
+    <div class="d-flex justify-content-center align-items-center vh-100">
+        <div class="text-muted">Loading...</div>
+    </div>
+}
+else if (!Auth.HasAccount)
+{
+    <div class="d-flex justify-content-center align-items-center vh-100">
+        <JournalApp.Components.Pages.SetupPin />
+    </div>
+}
+else if (!Auth.IsLoggedIn)
 {
     <!-- LOGIN FIRST -->
     <div class="d-flex justify-content-center align-items-center vh-100">
@@ -34,6 +48,16 @@ else
 
     .content {
         flex: 1;
-        background-color: #f8f9fa;
     }
 </style>
+
+@code {
+    private bool _authReady;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ThemeService.InitializeAsync(JS);
+        await Auth.InitializeAsync();
+        _authReady = true;
+    }
+}

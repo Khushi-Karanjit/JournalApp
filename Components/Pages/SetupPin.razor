@@ -1,4 +1,4 @@
-﻿@page "/setup-pin"
+@page "/setup-pin"
 @using JournalApp.Services
 @inject AuthService Auth
 @inject NavigationManager Nav
@@ -33,6 +33,6 @@
         Auth.SetUsername(username);
         await Auth.SetPinAsync(pin);
 
-        Nav.NavigateTo("/lock", true);
+        Nav.NavigateTo("/", true);
     }
 }

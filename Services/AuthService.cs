@@ -1,4 +1,4 @@
-﻿using Microsoft.Maui.Storage;
+using Microsoft.Maui.Storage;
 
 namespace JournalApp.Services;
 
@@ -78,6 +78,13 @@ public class AuthService
 
         IsLoggedIn = false;
         return false;
+    }
+
+    public async Task<bool> VerifyPinAsync(string pin)
+    {
+        var stored = await SecureStorage.GetAsync(PinKey);
+        if (string.IsNullOrWhiteSpace(stored)) return false;
+        return stored.Trim() == pin.Trim();
     }
 
 

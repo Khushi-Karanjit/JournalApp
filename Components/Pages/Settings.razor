@@ -1,0 +1,86 @@
+@page "/settings"
+@inject JournalApp.Services.ThemeService ThemeService
+@inject JournalApp.Services.AuthService Auth
+@inject IJSRuntime JS
+
+<h3 class="mb-3">Settings</h3>
+
+<div class="card p-3" style="max-width:480px;">
+    <h6 class="mb-2">Theme</h6>
+    <div class="btn-group" role="group">
+        <button class="btn @(IsLight ? "btn-primary" : "btn-outline-secondary")"
+                @onclick="SetLight">
+            Light
+        </button>
+        <button class="btn @(IsDark ? "btn-primary" : "btn-outline-secondary")"
+                @onclick="SetDark">
+            Dark
+        </button>
+    </div>
+</div>
+
+<div class="card p-3 mt-3" style="max-width:480px;">
+    <h6 class="mb-2">Change PIN</h6>
+    <input type="password" class="form-control mb-2" placeholder="Current PIN" @bind="currentPin" />
+    <input type="password" class="form-control mb-2" placeholder="New PIN" @bind="newPin" />
+    <input type="password" class="form-control mb-2" placeholder="Confirm New PIN" @bind="confirmPin" />
+
+    @if (!string.IsNullOrWhiteSpace(pinStatus))
+    {
+        <div class="text-muted mb-2">@pinStatus</div>
+    }
+
+    <button class="btn btn-primary" @onclick="ChangePin">Update PIN</button>
+</div>
+
+@code {
+    private bool IsLight => ThemeService.CurrentTheme == "light";
+    private bool IsDark => ThemeService.CurrentTheme == "dark";
+
+    private Task SetLight()
+    {
+        return ThemeService.SetThemeAsync("light", JS);
+    }
+
+    private Task SetDark()
+    {
+        return ThemeService.SetThemeAsync("dark", JS);
+    }
+
+    private string currentPin = "";
+    private string newPin = "";
+    private string confirmPin = "";
+    private string pinStatus = "";
+
+    private async Task ChangePin()
+    {
+        pinStatus = "";
+
+        if (string.IsNullOrWhiteSpace(currentPin) ||
+            string.IsNullOrWhiteSpace(newPin) ||
+            string.IsNullOrWhiteSpace(confirmPin))
+        {
+            pinStatus = "All PIN fields are required.";
+            return;
+        }
+
+        if (newPin.Trim() != confirmPin.Trim())
+        {
+            pinStatus = "New PINs do not match.";
+            return;
+        }
+
+        var ok = await Auth.VerifyPinAsync(currentPin.Trim());
+        if (!ok)
+        {
+            pinStatus = "Current PIN is incorrect.";
+            return;
+        }
+
+        await Auth.SetPinAsync(newPin.Trim());
+        currentPin = "";
+        newPin = "";
+        confirmPin = "";
+        pinStatus = "PIN updated.";
+    }
+}
