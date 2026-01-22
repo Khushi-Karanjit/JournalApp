@@ -1,63 +1,138 @@
 @inherits LayoutComponentBase
 @inject JournalApp.Services.AuthService Auth
 @inject JournalApp.Services.ThemeService ThemeService
+@inject NavigationManager Nav
 @inject IJSRuntime JS
+
+<MudThemeProvider Theme="_theme" IsDarkMode="@(ThemeService.CurrentTheme == "dark")" />
+<MudDialogProvider />
+<MudSnackbarProvider />
+<MudPopoverProvider />
 
 @if (!_authReady)
 {
     <div class="d-flex justify-content-center align-items-center vh-100">
-        <div class="text-muted">Loading...</div>
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
     </div>
 }
 else if (!Auth.HasAccount)
 {
-    <div class="d-flex justify-content-center align-items-center vh-100">
-        <JournalApp.Components.Pages.SetupPin />
-    </div>
+    <MudContainer MaxWidth="MaxWidth.Small" Class="mt-8">
+        <MudPaper Class="pa-6">
+            <JournalApp.Components.Pages.SetupPin />
+        </MudPaper>
+    </MudContainer>
 }
 else if (!Auth.IsLoggedIn)
 {
-    <!-- LOGIN FIRST -->
-    <div class="d-flex justify-content-center align-items-center vh-100">
-        <JournalApp.Components.Pages.Login />
-    </div>
+    <MudContainer MaxWidth="MaxWidth.Small" Class="mt-8">
+        <MudPaper Class="pa-6">
+            <JournalApp.Components.Pages.Login />
+        </MudPaper>
+    </MudContainer>
 }
 else
 {
-    <!-- MAIN APPLICATION -->
-    <div class="page">
-        <div class="sidebar">
-            <NavMenu />
-        </div>
+    <MudLayout>
 
-        <main class="content px-4 py-3">
-            @Body
-        </main>
-    </div>
+        <!-- AppBar -->
+        <MudAppBar Elevation="1" Style="background-color: var(--mud-palette-appbar-background); color: var(--mud-palette-text-primary);">
+            <MudIconButton Icon="@Icons.Material.Filled.Menu"
+                           Color="Color.Inherit"
+                           Edge="Edge.Start"
+                           OnClick="ToggleDrawer" />
+            <MudText Typo="Typo.h6">JournalApp</MudText>
+            <MudSpacer />
+            <MudIconButton Icon="@Icons.Material.Filled.Settings"
+                           Color="Color.Inherit"
+                           OnClick="GoToSettings" />
+        </MudAppBar>
+
+        <!-- Drawer -->
+        <MudDrawer @bind-Open="_drawerOpen"
+                   Variant="DrawerVariant.Responsive"
+                   Breakpoint="Breakpoint.Md"
+                   Elevation="1">
+
+            <MudNavMenu>
+                <MudNavLink Href="" Match="NavLinkMatch.All">Home</MudNavLink>
+                <MudNavLink Href="today">Today Journal</MudNavLink>
+                <MudNavLink Href="search">Search</MudNavLink>
+                <MudNavLink Href="journal-list">Journal List</MudNavLink>
+                <MudNavLink Href="calendar">Calendar</MudNavLink>
+                <MudNavLink Href="settings">Settings</MudNavLink>
+            </MudNavMenu>
+
+        </MudDrawer>
+
+        <MudMainContent>
+            <MudContainer MaxWidth="MaxWidth.Large" Class="pa-4">
+                @Body
+            </MudContainer>
+        </MudMainContent>
+
+    </MudLayout>
 }
 
-<style>
-    .page {
-        display: flex;
-        min-height: 100vh;
-    }
-
-    .sidebar {
-        width: 250px;
-    }
-
-    .content {
-        flex: 1;
-    }
-</style>
+@implements IDisposable
 
 @code {
+    private readonly MudTheme _theme = new()
+    {
+        PaletteLight = new PaletteLight
+        {
+            Primary = "#5f7f76",            // Sage Green
+            Secondary = "#f0e9df",          // Surface-2 (Beige/Action)
+            AppbarBackground = "#f5f0e6",   // Beige
+            Surface = "#ffffff",
+            Background = "#f8f5ee",
+            TextPrimary = "#1c1c1c",
+            TextSecondary = "#555555",
+            ActionDefault = "#5f7f76",      // Icons/Actions
+            ActionDisabled = "#bdbdbd",
+            DrawerBackground = "#fbf7f2",   // Surface (Cards/Drawer)
+            DrawerText = "#1c1c1c",
+            DrawerIcon = "#5f7f76"
+        },
+        PaletteDark = new PaletteDark
+        {
+            Primary = "#6f9b90",            // Lighter Sage
+            Secondary = "#2b2f34",
+            AppbarBackground = "#1f1f1f",   // Dark Grey
+            Surface = "#252525",
+            Background = "#121212",
+            TextPrimary = "#ffffff",
+            TextSecondary = "#b0b0b0",
+            ActionDefault = "#6f9b90",
+            ActionDisabled = "#555555",
+            DrawerBackground = "#1f1f1f",
+            DrawerText = "#ffffff",
+            DrawerIcon = "#6f9b90"
+        }
+    };
+
     private bool _authReady;
+    private bool _drawerOpen = true;
 
     protected override async Task OnInitializedAsync()
     {
+        ThemeService.OnThemeChanged += HandleThemeChanged;
         await ThemeService.InitializeAsync(JS);
         await Auth.InitializeAsync();
         _authReady = true;
     }
+
+    private void HandleThemeChanged()
+    {
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        ThemeService.OnThemeChanged -= HandleThemeChanged;
+    }
+
+    private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
+
+    private void GoToSettings() => Nav.NavigateTo("/settings");
 }

@@ -1,162 +1,295 @@
 @page "/"
 @using JournalApp.Services
 
-<h1>Home</h1>
+<style>
+/* --- Page Container --- */
+.page-shell {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: var(--mud-palette-text-primary);
+}
 
-<div class="card p-3">
-    <div class="d-flex align-items-center justify-content-between mb-2">
-        <h5 class="mb-0">Analytics</h5>
-    </div>
+h4 {
+    margin-bottom: 5px;
+}
 
-    <div class="row g-3 align-items-center mb-3">
-        <div class="col-md-3">
-            <input type="date"
-                   class="form-control"
-                   @bind-value="_startDate"
-                   @bind-value:format="yyyy-MM-dd" />
-        </div>
-        <div class="col-md-3">
-            <input type="date"
-                   class="form-control"
-                   @bind-value="_endDate"
-                   @bind-value:format="yyyy-MM-dd" />
-        </div>
-        <div class="col-md-2 d-grid">
-            <button class="btn btn-primary" @onclick="ApplyFilter">
-                Apply
-            </button>
-        </div>
+/* --- Muted Text --- */
+.muted-text {
+    color: var(--mud-palette-text-secondary);
+    margin-bottom: 20px;
+}
+
+/* --- Filters --- */
+.filter-grid {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+
+.filter-grid input[type="date"] {
+    padding: 8px;
+    border: 1px solid var(--mud-palette-divider);
+    border-radius: 4px;
+    flex: 1;
+    background-color: var(--mud-palette-surface);
+    color: var(--mud-palette-text-primary);
+}
+
+.filter-grid input[type="date"]::placeholder {
+    color: var(--mud-palette-text-secondary);
+}
+
+.filter-grid button {
+    padding: 8px 16px;
+    background-color: var(--mud-palette-primary);
+    color: var(--mud-palette-primary-text);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.filter-grid button:hover {
+    background-color: var(--mud-palette-primary-darken);
+}
+
+/* --- Grid Layout --- */
+.card-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+}
+
+/* Full-width cards */
+.full-width-card {
+    grid-column: 1 / -1;
+}
+
+/* --- Cards --- */
+.card {
+    background-color: var(--mud-palette-surface);
+    color: var(--mud-palette-text-primary);
+    padding: 15px;
+    border-radius: 10px;
+    box-shadow: var(--mud-elevation-2);
+    min-height: 150px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.card h5,
+.card h2 {
+    margin: 5px 0 10px 0;
+}
+
+/* --- Summary Cards --- */
+.summary-card h2 {
+    font-size: 2.5rem;
+    font-weight: bold;
+    margin: 5px 0;
+    color: var(--mud-palette-primary);
+}
+
+/* --- Chart Bars --- */
+.chart-bar {
+    background-color: var(--mud-palette-action-disabled-background);
+    border-radius: 5px;
+    height: 12px;
+    width: 100%;
+    margin-top: 5px;
+}
+
+.chart-bar-fill {
+    background-color: var(--mud-palette-primary);
+    height: 100%;
+    border-radius: 5px;
+}
+
+/* --- Table-like Layout --- */
+.table-card table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table-card th,
+.table-card td {
+    text-align: left;
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--mud-palette-divider);
+    font-size: 14px;
+}
+
+.table-card th {
+    font-weight: bold;
+    background-color: var(--mud-palette-background-grey);
+    color: var(--mud-palette-text-primary);
+}
+
+/* --- Lists --- */
+ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+li {
+    padding: 3px 0;
+    font-size: 14px;
+    color: var(--mud-palette-text-primary);
+}
+
+.small {
+    font-size: 14px;
+    margin-bottom: 5px;
+    color: var(--mud-palette-text-secondary);
+}
+</style>
+
+
+<div class="page-shell">
+    <h4>Home</h4>
+    <div class="muted-text">Analytics</div>
+
+    <!-- Filters -->
+    <div class="filter-grid">
+        <input type="date" @bind="_startDate" />
+        <input type="date" @bind="_endDate" />
+        <button @onclick="ApplyFilter">Apply</button>
     </div>
 
     @if (_analyticsSummary is null)
     {
-        <div class="text-muted">Loading...</div>
+        <div class="muted-text">Loading...</div>
     }
     else
     {
-        <div class="row g-3">
-            <div class="col-md-4">
-                <div class="card p-3 h-100">
-                    <h6 class="mb-2">Mood distribution (category)</h6>
-                    @if (_analyticsSummary.MoodCategoryPercentages.Count == 0)
+        <div class="card-grid">
+
+            <!-- Row 1: Summary Cards -->
+            <div class="card summary-card">
+                <div class="small">Most Frequent Mood</div>
+                <h2>@_analyticsSummary.MostFrequentMood</h2>
+            </div>
+
+            <div class="card summary-card">
+                <div class="small">Current Streak</div>
+                <h2>@_analyticsSummary.CurrentStreakDays</h2>
+            </div>
+
+            <div class="card summary-card">
+                <div class="small">Longest Streak</div>
+                <h2>@_analyticsSummary.LongestStreakDays</h2>
+            </div>
+
+            <!-- Row 2: Mood Distribution -->
+            <div class="card full-width-card">
+                <div class="small mb-2">Mood Distribution</div>
+                @if (_analyticsSummary.MoodCategoryPercentages.Count == 0)
+                {
+                    <div class="muted-text">No data.</div>
+                }
+                else
+                {
+                    @foreach (var c in _analyticsSummary.MoodCategoryPercentages)
                     {
-                        <div class="text-muted">No data.</div>
-                    }
-                    else
-                    {
-                        @foreach (var c in _analyticsSummary.MoodCategoryPercentages)
-                        {
-                            <div class="mb-2">
-                                <div class="d-flex justify-content-between small">
-                                    <span>@c.Category</span>
-                                    <span>@c.Percentage%</span>
-                                </div>
-                                <div class="chart-bar">
-                                    <div class="chart-bar-fill" style="width:@($"{c.Percentage}%")"></div>
-                                </div>
+                        <div class="mb-2">
+                            <div class="small" style="display:flex; justify-content:space-between;">
+                                <span>@c.Category</span>
+                                <span>@c.Percentage%</span>
                             </div>
-                        }
-                    }
-                </div>
-            </div>
-
-            <div class="col-md-4">
-                <div class="card p-3 h-100">
-                    <h6 class="mb-2">Most frequent mood</h6>
-                    <div class="fs-4 fw-semibold">@_analyticsSummary.MostFrequentMood</div>
-                </div>
-            </div>
-
-            <div class="col-md-4">
-                <div class="card p-3 h-100">
-                    <h6 class="mb-2">Top tags</h6>
-                    @if (_analyticsSummary.TagCounts.Count == 0)
-                    {
-                        <div class="text-muted">No data.</div>
-                    }
-                    else
-                    {
-                        <ul class="mb-0">
-                            @foreach (var t in _analyticsSummary.TagCounts.Take(5))
-                            {
-                                <li>@t.Name: @t.Count</li>
-                            }
-                        </ul>
-                    }
-                </div>
-            </div>
-        </div>
-
-        <div class="row g-3 mt-1">
-            <div class="col-md-6">
-                <div class="card p-3 h-100">
-                    <h6 class="mb-2">Tag breakdown (%)</h6>
-                    @if (_analyticsSummary.TagBreakdownPercentages.Count == 0)
-                    {
-                        <div class="text-muted">No data.</div>
-                    }
-                    else
-                    {
-                        @foreach (var t in _analyticsSummary.TagBreakdownPercentages.Take(8))
-                        {
-                            <div class="mb-2">
-                                <div class="d-flex justify-content-between small">
-                                    <span>@t.Category</span>
-                                    <span>@t.Percentage%</span>
-                                </div>
-                                <div class="chart-bar">
-                                    <div class="chart-bar-fill" style="width:@($"{t.Percentage}%")"></div>
-                                </div>
+                            <div class="chart-bar">
+                                <div class="chart-bar-fill" style="width:@($"{c.Percentage}%")"></div>
                             </div>
-                        }
-                    }
-                </div>
-            </div>
-
-            <div class="col-md-6">
-                <div class="card p-3 h-100">
-                    <h6 class="mb-2">Word count trend (avg)</h6>
-                    @if (_analyticsSummary.WordCountTrend.Count == 0)
-                    {
-                        <div class="text-muted">No data.</div>
-                    }
-                    else
-                    {
-                        <ul class="mb-0">
-                            @foreach (var p in _analyticsSummary.WordCountTrend)
-                            {
-                                <li>@p.Date.ToString("yyyy-MM-dd"): @p.AverageWords</li>
-                            }
-                        </ul>
-                    }
-                </div>
-            </div>
-        </div>
-
-        <div class="row g-3 mt-1">
-            <div class="col-md-6">
-                <div class="card p-3 h-100">
-                    <h6 class="mb-2">Streaks (range)</h6>
-                    <div>Current: @_analyticsSummary.CurrentStreakDays</div>
-                    <div>Longest: @_analyticsSummary.LongestStreakDays</div>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="card p-3 h-100">
-                    <h6 class="mb-2">Missed days (range)</h6>
-                    @if (_analyticsSummary.MissedDates.Count == 0)
-                    {
-                        <div class="text-muted">None.</div>
-                    }
-                    else
-                    {
-                        <div>@_analyticsSummary.MissedDates.Count total</div>
-                        <div class="text-muted" style="font-size:0.85rem;">
-                            @string.Join(", ", _analyticsSummary.MissedDates.Take(5).Select(d => d.ToString("MM-dd")))
                         </div>
                     }
-                </div>
+                }
             </div>
+
+            <!-- Row 3: Tag Breakdown -->
+            <div class="card full-width-card">
+                <div class="small mb-2">Tag Breakdown (%)</div>
+                @if (_analyticsSummary.TagBreakdownPercentages.Count == 0)
+                {
+                    <div class="muted-text">No data.</div>
+                }
+                else
+                {
+                    @foreach (var t in _analyticsSummary.TagBreakdownPercentages.Take(8))
+                    {
+                        <div class="mb-2">
+                            <div class="small" style="display:flex; justify-content:space-between;">
+                                <span>@t.Category</span>
+                                <span>@t.Percentage%</span>
+                            </div>
+                            <div class="chart-bar">
+                                <div class="chart-bar-fill" style="width:@($"{t.Percentage}%")"></div>
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+
+            <!-- Row 4: Top Tags -->
+            <div class="card full-width-card table-card">
+                <div class="small mb-2">Top Tags</div>
+                @if (_analyticsSummary.TagCounts.Count == 0)
+                {
+                    <div class="muted-text">No data.</div>
+                }
+                else
+                {
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Tag</th>
+                                <th>Count</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var t in _analyticsSummary.TagCounts.Take(10))
+                            {
+                                <tr>
+                                    <td>@t.Name</td>
+                                    <td>@t.Count</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+
+            <!-- Word Count Trend -->
+            <div class="card full-width-card table-card">
+                <div class="small mb-2">Word Count Trend</div>
+                @if (_analyticsSummary.WordCountTrend.Count == 0)
+                {
+                    <div class="muted-text">No data.</div>
+                }
+                else
+                {
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Average Words</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var p in _analyticsSummary.WordCountTrend)
+                            {
+                                <tr>
+                                    <td>@p.Date.ToString("yyyy-MM-dd")</td>
+                                    <td>@p.AverageWords</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+
         </div>
     }
 </div>
@@ -164,16 +297,20 @@
 @code {
     private readonly AnalyticsService _analyticsService = new();
     private AnalyticsService.AnalyticsSummary? _analyticsSummary;
-    private DateTime _startDate = DateTime.Today.AddDays(-30);
-    private DateTime _endDate = DateTime.Today;
+    private DateTime? _startDate = DateTime.Today.AddDays(-30);
+    private DateTime? _endDate = DateTime.Today;
 
     protected override async Task OnInitializedAsync()
     {
-        _analyticsSummary = await _analyticsService.GetSummaryAsync(_startDate, _endDate);
+        _analyticsSummary = await _analyticsService.GetSummaryAsync(
+            _startDate ?? DateTime.Today.AddDays(-30),
+            _endDate ?? DateTime.Today);
     }
 
     private async Task ApplyFilter()
     {
-        _analyticsSummary = await _analyticsService.GetSummaryAsync(_startDate, _endDate);
+        _analyticsSummary = await _analyticsService.GetSummaryAsync(
+            _startDate ?? DateTime.Today.AddDays(-30),
+            _endDate ?? DateTime.Today);
     }
 }

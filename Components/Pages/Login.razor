@@ -1,42 +1,45 @@
-﻿@page "/login"
+@page "/login"
 @inject JournalApp.Services.AuthService Auth
 @inject NavigationManager Nav
 
-<h3>Journal Login</h3>
+<MudPaper Class="surface-card auth-card">
+    <MudStack Spacing="2">
+        <MudText Typo="Typo.h5">Journal Login</MudText>
+        <MudText Class="muted-text">
+            @if (!Auth.HasAccount)
+            {
+                <span>Create your account</span>
+            }
+            else
+            {
+                <span>Welcome back, @Auth.Username</span>
+            }
+        </MudText>
 
-<div class="card p-3" style="max-width:360px;">
-    <p class="text-muted">
         @if (!Auth.HasAccount)
         {
-            <span>Create your account</span>
+            <MudTextField T="string"
+                          Label="Username"
+                          Variant="Variant.Outlined"
+                          @bind-Value="username" />
         }
-        else
+
+        <MudTextField T="string"
+                      Label="PIN"
+                      Variant="Variant.Outlined"
+                      InputType="InputType.Password"
+                      @bind-Value="pin" />
+
+        @if (!string.IsNullOrEmpty(error))
         {
-            <span>Welcome back, @Auth.Username</span>
+            <MudText Color="Color.Error">@error</MudText>
         }
-    </p>
 
-    @if (!Auth.HasAccount)
-    {
-        <input class="form-control mb-2"
-               placeholder="Username"
-               @bind="username" />
-    }
-
-    <input type="password"
-           class="form-control mb-2"
-           placeholder="PIN"
-           @bind="pin" />
-
-    @if (!string.IsNullOrEmpty(error))
-    {
-        <div class="text-danger mb-2">@error</div>
-    }
-
-    <button class="btn btn-primary w-100" @onclick="Submit">
-        @(!Auth.HasAccount ? "Create Account" : "Login")
-    </button>
-</div>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" FullWidth="true" OnClick="Submit">
+            @(!Auth.HasAccount ? "Create Account" : "Login")
+        </MudButton>
+    </MudStack>
+</MudPaper>
 
 @code {
     private string username = "";

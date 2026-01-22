@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using CommunityToolkit.Maui;
+using MudBlazor.Services;
 using JournalApp.Services;
 
 namespace JournalApp
@@ -18,6 +19,7 @@ namespace JournalApp
                 });
 
             builder.Services.AddMauiBlazorWebView();
+            builder.Services.AddMudServices();
             builder.Services.AddSingleton<AppDataContext>();
             builder.Services.AddSingleton<MoodCatalog>();
             builder.Services.AddSingleton<TagCatalog>();

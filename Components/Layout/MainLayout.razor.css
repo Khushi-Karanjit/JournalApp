@@ -9,11 +9,11 @@ main {
 }
 
 .sidebar {
-    background-image: linear-gradient(180deg, var(--surface-2) 0%, var(--surface) 70%);
+    background-image: linear-gradient(180deg, var(--mud-palette-surface) 0%, var(--mud-palette-background) 70%);
 }
 
 .top-row {
-    background-color: var(--surface-2);
+    background-color: var(--mud-palette-surface);
     border-bottom: 1px solid var(--border);
     justify-content: flex-end;
     height: 3.5rem;
@@ -51,6 +51,8 @@ main {
         flex-direction: row;
     }
 
+
+
     .sidebar {
         width: 250px;
         height: 100vh;
@@ -59,10 +61,31 @@ main {
     }
 
     .top-row {
-        position: sticky;
-        top: 0;
-        z-index: 1;
+        background-color: var(--mud-palette-surface);
+    border-bottom: 1px solid var(--border);
+    height: 3.5rem;
+    display: flex;
+    align-items: center;
     }
+
+    .top-row ::deep a,
+.top-row ::deep .btn-link {
+    color: var(--mud-palette-text-primary);
+    font-weight: 500;
+    opacity: 0.85;
+}
+
+.top-row ::deep a:hover,
+.top-row ::deep .btn-link:hover {
+    opacity: 1;
+    text-decoration: underline;
+}
+.sidebar {
+    background-image: none; /* remove the gradient */
+    background-color: var(--mud-palette-drawer-background);
+}
+
+
 
         .top-row.auth ::deep a:first-child {
             flex: 1;

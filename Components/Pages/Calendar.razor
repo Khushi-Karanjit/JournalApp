@@ -2,44 +2,60 @@
 @inject JournalApp.Services.EntryService EntryService
 @inject NavigationManager Nav
 
-<h3 class="mb-3">Calendar</h3>
+<MudContainer MaxWidth="MaxWidth.Medium" Class="page-shell">
+    <MudText Typo="Typo.h4" Class="mb-3">Calendar</MudText>
 
-<div class="d-flex align-items-center justify-content-between mb-3">
-    <button class="btn btn-outline-secondary btn-sm" @onclick="PrevMonth">Prev</button>
-    <div class="fw-semibold">@_currentMonth.ToString("MMMM yyyy")</div>
-    <button class="btn btn-outline-secondary btn-sm" @onclick="NextMonth">Next</button>
-</div>
+    <MudPaper Class="surface-card calendar-card">
 
-<table class="table table-bordered calendar">
-    <thead>
-        <tr>
+        <!-- Header INSIDE the card -->
+        <div class="calendar-header">
+            <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft"
+                           Variant="Variant.Text"
+                           Color="Color.Inherit"
+                           OnClick="PrevMonth" />
+
+            <MudText Typo="Typo.h6" Class="calendar-title">
+                @_currentMonth.ToString("MMMM yyyy")
+            </MudText>
+
+            <MudIconButton Icon="@Icons.Material.Filled.ChevronRight"
+                           Variant="Variant.Text"
+                           Color="Color.Inherit"
+                           OnClick="NextMonth" />
+        </div>
+
+        <!-- Weekday headers -->
+        <div class="calendar-grid mb-2">
             @foreach (var day in _dayHeaders)
             {
-                <th class="text-center">@day</th>
+                <div class="calendar-weekday">@day</div>
             }
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var week in _weeks)
-        {
-            <tr>
+        </div>
+
+        <!-- Calendar days -->
+        <div class="calendar-grid">
+            @foreach (var week in _weeks)
+            {
                 @foreach (var date in week)
                 {
                     var inMonth = date.Month == _currentMonth.Month;
                     var hasEntry = _entryDates.Contains(date.Date);
+                    var classes = GetCellClass(inMonth, hasEntry, date);
 
-                    <td class="@GetCellClass(inMonth, hasEntry)">
-                        <button class="btn btn-sm w-100 text-start"
-                                disabled="@(!inMonth)"
-                                @onclick="() => OpenEntry(date)">
+                    <MudPaper Class="@classes">
+                        <MudButton Variant="Variant.Text"
+                                   Disabled="@(!inMonth)"
+                                   Class="calendar-day-btn"
+                                   OnClick="() => OpenEntry(date)">
                             @date.Day
-                        </button>
-                    </td>
+                        </MudButton>
+                    </MudPaper>
                 }
-            </tr>
-        }
-    </tbody>
-</table>
+            }
+        </div>
+
+    </MudPaper>
+</MudContainer>
 
 @code {
     private readonly string[] _dayHeaders = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
@@ -84,10 +100,18 @@
         return weeks;
     }
 
-    private string GetCellClass(bool inMonth, bool hasEntry)
+    private string GetCellClass(bool inMonth, bool hasEntry, DateTime date)
     {
-        if (!inMonth) return "out-month";
-        return hasEntry ? "has-entry" : "";
+        var classes = "calendar-cell";
+
+        if (!inMonth)
+            classes += " out-month";
+        if (hasEntry)
+            classes += " has-entry";
+        if (IsToday(date))
+            classes += " today";
+
+        return classes;
     }
 
     private async Task PrevMonth()
@@ -107,30 +131,6 @@
         var formatted = date.ToString("yyyy-MM-dd");
         Nav.NavigateTo($"/entry?date={formatted}");
     }
+
+    private static bool IsToday(DateTime date) => date.Date == DateTime.Today;
 }
-
-<style>
-    .calendar td {
-        vertical-align: top;
-        padding: 0.25rem;
-    }
-
-    .calendar .btn {
-        color: var(--text);
-        background: transparent;
-    }
-
-    .calendar .btn:disabled {
-        color: var(--text-muted);
-    }
-
-    .calendar .has-entry {
-        background: var(--surface-2);
-        border-color: var(--primary);
-    }
-
-    .calendar .out-month {
-        background: var(--surface-2);
-        color: var(--text-muted);
-    }
-</style>

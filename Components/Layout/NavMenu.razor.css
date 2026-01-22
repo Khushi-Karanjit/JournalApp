@@ -3,12 +3,12 @@
     cursor: pointer;
     width: 3.5rem;
     height: 2.5rem;
-    color: var(--text);
+    color: var(--mud-palette-text-primary);
     position: absolute;
     top: 0.5rem;
     right: 1rem;
     border: 1px solid var(--border);
-    background-color: var(--surface-2);
+    background-color: var(--mud-palette-surface);
     background-image: linear-gradient(currentColor, currentColor),
         linear-gradient(currentColor, currentColor),
         linear-gradient(currentColor, currentColor);
@@ -17,13 +17,13 @@
     background-repeat: no-repeat;
 }
 
-    .navbar-toggler:checked {
-        background-color: var(--surface);
-    }
+.navbar-toggler:checked {
+    background-color: var(--mud-palette-surface);
+}
 
 .top-row {
     height: 3.5rem;
-    background-color: var(--surface-2);
+    background-color: var(--mud-palette-background);
 }
 
 .navbar-brand {
@@ -94,38 +94,38 @@
     padding-bottom: 0.5rem;
 }
 
-    .nav-item:first-of-type {
-        padding-top: 1rem;
-    }
+.nav-item:first-of-type {
+    padding-top: 1rem;
+}
 
-    .nav-item:last-of-type {
-        padding-bottom: 1rem;
-    }
+.nav-item:last-of-type {
+    padding-bottom: 1rem;
+}
 
-    .nav-item ::deep a {
-        color: var(--text);
-        border-radius: 4px;
-        height: 3rem;
-        display: flex;
-        align-items: center;
-        line-height: 3rem;
-    }
+.nav-item ::deep a {
+    color: var(--mud-palette-text-primary);
+    border-radius: 4px;
+    height: 3rem;
+    display: flex;
+    align-items: center;
+    line-height: 3rem;
+}
 
-        .nav-item ::deep a.active {
-            background-color: var(--surface-2);
-            color: var(--text);
-        }
+.nav-item ::deep a.active {
+    background-color: var(--mud-palette-action-default-hover);
+    color: var(--mud-palette-text-primary);
+}
 
-        .nav-item ::deep a:hover {
-            background-color: var(--surface-2);
-            color: var(--text);
-        }
+.nav-item ::deep a:hover {
+    background-color: var(--mud-palette-action-default-hover);
+    color: var(--mud-palette-text-primary);
+}
 
 .nav-scrollable {
     display: none;
 }
 
-.navbar-toggler:checked ~ .nav-scrollable {
+.navbar-toggler:checked~.nav-scrollable {
     display: block;
 }
 

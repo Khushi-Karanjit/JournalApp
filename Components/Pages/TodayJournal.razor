@@ -3,30 +3,40 @@
 @inject JournalApp.Services.EntryService EntryService
 @inject JournalApp.Services.MoodService MoodService
 @inject JournalApp.Services.TagService TagService
+@inject NavigationManager Nav
 @inject IJSRuntime JS
-<h3>Today's Journal</h3>
-<p class="text-muted mb-3">
-    One entry per day - @DisplayDate.ToString("dddd, MMM dd")
-</p>
 
-@if (!string.IsNullOrWhiteSpace(_status))
-{
-    <div class="alert alert-info">@_status</div>
-}
+<MudContainer MaxWidth="MaxWidth.Medium" Class="page-shell">
+    <MudStack Spacing="1" Class="mb-3">
+        <MudText Typo="Typo.h4">Journal Entry</MudText>
+        <MudText Class="muted-text">
+            One entry per day - @DisplayDate.ToString("dddd, MMM dd")
+        </MudText>
+    </MudStack>
 
-<div class="row g-3">
-    <!-- Editor -->
-    <div class="col-lg-8">
-        <div class="card p-3">
-            <div class="mb-3">
-                <label class="form-label">Title</label>
-                <input class="form-control"
-                       placeholder="Give your entry a title..."
-                       @bind="_title" />
-            </div>
+    @if (!string.IsNullOrWhiteSpace(_status))
+    {
+        <MudAlert Severity="Severity.Info" Class="mb-3">@_status</MudAlert>
+    }
 
-            <div class="mb-3">
-                <label class="form-label">Content</label>
+    <MudDatePicker Date="_selectedDate"
+                   DateChanged="OnDateChanged"
+                   Label="Entry date"
+                   Variant="Variant.Outlined"
+                   Class="mb-4" />
+
+    <MudGrid Class="mb-4">
+        <!-- xs stacks, md splits editor and preview -->
+        <MudItem xs="12" md="7">
+            <MudPaper Class="surface-card">
+                <MudTextField T="string"
+                              Label="Title"
+                              Placeholder="Give your entry a title..."
+                              @bind-Value="_title"
+                              Variant="Variant.Outlined"
+                              Class="mb-3" />
+
+                <MudText Typo="Typo.subtitle2" Class="muted-text mb-1">Content</MudText>
                 <div id="journal-toolbar" class="mb-2">
                     <span class="ql-formats">
                         <button class="ql-bold"></button>
@@ -47,149 +57,143 @@
                         <button class="ql-link"></button>
                     </span>
                 </div>
-                @* <textarea class="form-control"
-                          rows="10"
-                          placeholder="Write here..."
-                          @bind="_content"></textarea> *@
-                          <div id="journal">
+                <div id="journal" class="mb-2"></div>
+                <MudText Typo="Typo.caption" Class="muted-text">Words: @CountWords(_content)</MudText>
 
-                          </div>
-                <div class="form-text">
-                    Words: @CountWords(_content)
-                </div>
-            </div>
+                @if (_todayEntry is not null)
+                {
+                    <MudDivider Class="my-3" />
+                    <MudText Typo="Typo.body2" Class="muted-text">
+                        Created: @_todayEntry.CreatedAt:g
+                    </MudText>
+                    <MudText Typo="Typo.body2" Class="muted-text">
+                        Last updated: @_todayEntry.UpdatedAt:g
+                    </MudText>
+                }
+            </MudPaper>
+        </MudItem>
 
-            @if (_todayEntry is not null)
-            {
-                <hr />
-                <div class="text-muted" style="font-size:0.9rem;">
-                    <div><strong>Created:</strong> @_todayEntry.CreatedAt.ToString("g")</div>
-                    <div><strong>Last updated:</strong> @_todayEntry.UpdatedAt.ToString("g")</div>
-                </div>
-            }
-        </div>
-    </div>
+        <MudItem xs="12" md="5">
+            <MudPaper Class="surface-card">
+                <MudText Typo="Typo.h6" Class="mb-2">Preview</MudText>
+                <MudPaper Class="pa-2 preview-box" Elevation="0">
+                    @((MarkupString)(_content ?? ""))
+                </MudPaper>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
 
-    <!-- Preview + Mood + Tags -->
-    <div class="col-lg-4">
-        <div class="card p-3 mb-3">
-            <h5 class="mb-3">Preview</h5>
-            <div class="preview-box">
-                @((MarkupString)(_content ?? ""))
-            </div>
-        </div>
+    <div  class="card p-3 mb-3 rounded-card">
+        <h5 class="mb-3">Mood</h5>
 
-        <div class="card p-3 mb-3">
-            <h5 class="mb-3">Mood</h5>
-
-            <div class="mb-3">
-                <label class="form-label">Primary mood (required)</label>
-                <select class="form-select" @bind="_primaryMoodId">
-                    <option value="0">Select a mood</option>
-                    @foreach (var group in _moodGroups)
-                    {
-                        <optgroup label="@group.Category">
-                            @foreach (var m in group.Moods)
-                            {
-                                <option value="@m.Id">@m.Name</option>
-                            }
-                        </optgroup>
-                    }
-                </select>
-            </div>
-
-            <div>
-                <label class="form-label">Secondary moods (optional, up to 2)</label>
+        <div class="mb-3">
+            <label class="form-label">Primary mood (required)</label>
+            <select class="form-select" @bind="_primaryMoodId">
+                <option value="0">Select a mood</option>
                 @foreach (var group in _moodGroups)
                 {
-                    <div class="mb-2">
-                        <div class="text-muted small mb-1">@group.Category</div>
-                        <div class="d-flex flex-wrap gap-2">
-                            @foreach (var m in group.Moods)
-                            {
-                                var selected = _secondaryMoodIds.Contains(m.Id);
-                                var disable = !selected && _secondaryMoodIds.Count >= 2;
-
-                                <button type="button"
-                                        class="btn btn-sm @(selected ? "btn-dark" : "btn-outline-dark")"
-                                        disabled="@disable"
-                                        @onclick="() => ToggleSecondaryMood(m.Id)">
-                                    @m.Name
-                                </button>
-                            }
-                        </div>
-                    </div>
+                    <optgroup label="@group.Category">
+                        @foreach (var m in group.Moods)
+                        {
+                            <option value="@m.Id">@m.Name</option>
+                        }
+                    </optgroup>
                 }
-
-                <div class="form-text">
-                    Selected: @_secondaryMoodIds.Count / 2
-                </div>
-            </div>
+            </select>
         </div>
 
-        <div class="card p-3">
-            <h5 class="mb-3">Tags</h5>
-
-            @if (_availableTags.Count == 0)
+        <div>
+            <label class="form-label">Secondary moods (optional, up to 2)</label>
+            @foreach (var group in _moodGroups)
             {
-                <div class="text-muted">No tags available.</div>
-            }
-            else
-            {
-                <div class="d-flex flex-wrap gap-2 mb-3">
-                    @foreach (var t in _availableTags)
-                    {
-                        var selected = _selectedTagIds.Contains(t.Id);
-
-                        <button type="button"
-                                class="btn btn-sm @(selected ? "btn-dark" : "btn-outline-dark")"
-                                @onclick="() => ToggleTag(t.Id)">
-                            @t.Name
-                        </button>
-                    }
-                </div>
-            }
-
-            <div class="input-group">
-                <input class="form-control"
-                       placeholder="Add custom tag..."
-                       @bind="_newTagText" />
-                <button class="btn btn-outline-primary"
-                        type="button"
-                        @onclick="AddCustomTag">
-                    Add
-                </button>
-            </div>
-
-            @if (_selectedTags.Count > 0)
-            {
-                <div class="mt-3">
-                    <div class="text-muted" style="font-size:0.9rem;">Selected:</div>
-                    <div class="d-flex flex-wrap gap-2 mt-1">
-                        @foreach (var t in _selectedTags)
+                <div class="mb-2">
+                    <div class="text-muted small mb-1">@group.Category</div>
+                    <div class="d-flex flex-wrap gap-2">
+                        @foreach (var m in group.Moods)
                         {
-                            <span class="badge bg-secondary">@t.Name</span>
+                            var selected = _secondaryMoodIds.Contains(m.Id);
+                            var disable = !selected && _secondaryMoodIds.Count >= 2;
+
+                            <button type="button"
+                                    class="btn btn-sm @(selected ? "btn-dark" : "btn-outline-dark")"
+                                    disabled="@disable"
+                                    @onclick="() => ToggleSecondaryMood(m.Id)">
+                                @m.Name
+                            </button>
                         }
                     </div>
                 </div>
             }
+
+            <div class="form-text">
+                Selected: @_secondaryMoodIds.Count / 2
+            </div>
         </div>
     </div>
-</div>
 
-<!-- FINAL ACTIONS AT END -->
-<div class="mt-4 mb-5 d-flex justify-content-end gap-2">
-    <button class="btn btn-sm btn-outline-secondary"
-            disabled="@(!_hasTodayEntry)"
-            @onclick="DeleteToday">
+    <div class="card p-3 rounded-card">
+        <h5 class="mb-3">Tags</h5>
+
+        @if (_availableTags.Count == 0)
+        {
+            <div class="text-muted">No tags available.</div>
+        }
+        else
+        {
+            <div class="d-flex flex-wrap gap-2 mb-3">
+                @foreach (var t in _availableTags)
+                {
+                    var selected = _selectedTagIds.Contains(t.Id);
+
+                    <button type="button"
+                            class="btn btn-sm @(selected ? "btn-dark" : "btn-outline-dark")"
+                            @onclick="() => ToggleTag(t.Id)">
+                        @t.Name
+                    </button>
+                }
+            </div>
+        }
+
+        <div class="input-group">
+            <input class="form-control"
+                   placeholder="Add custom tag..."
+                   @bind="_newTagText" />
+            <button class="btn btn-outline-primary"
+                    type="button"
+                    @onclick="AddCustomTag">
+                Add
+            </button>
+        </div>
+
+        @if (_selectedTags.Count > 0)
+        {
+            <div class="mt-3">
+                <div class="text-muted" style="font-size:0.9rem;">Selected:</div>
+                <div class="d-flex flex-wrap gap-2 mt-1">
+                    @foreach (var t in _selectedTags)
+                    {
+                        <span class="badge bg-secondary">@t.Name</span>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+
+  <div class="button-group">
+    <button class="btn btn-outline"
+            @onclick="DeleteToday"
+            disabled="@(!_hasTodayEntry)">
         Delete
     </button>
 
-    <button class="btn btn-sm btn-primary"
+    <button class="btn btn-primary"
             @onclick="Save">
         Save
     </button>
 </div>
+
+
+</MudContainer>
 
 @code {
     [SupplyParameterFromQuery]
@@ -218,6 +222,7 @@
     private bool _editorReady;
     private string? _pendingContent;
     private DateTime? _loadedDate;
+    private DateTime _selectedDate = DateTime.Today;
 
     private List<MoodGroup> _moodGroups = new();
     private int _primaryMoodId;
@@ -251,6 +256,7 @@
         if (_loadedDate != target)
         {
             _loadedDate = target;
+            _selectedDate = target;
             await LoadTodayAsync();
         }
     }
@@ -297,6 +303,8 @@
 
     private void ToggleSecondaryMood(int moodId)
     {
+        if (moodId == _primaryMoodId) return;
+
         if (_secondaryMoodIds.Contains(moodId))
         {
             _secondaryMoodIds.Remove(moodId);
@@ -322,6 +330,7 @@
         _selectedTags.Clear();
         _selectedTags.AddRange(_availableTags.Where(t => _selectedTagIds.Contains(t.Id)));
     }
+
 
     private async Task AddCustomTag()
     {
@@ -367,6 +376,7 @@
             "confirm",
             $"Do you want to {action} the entry for {DisplayDate:dddd, MMM dd}?");
         if (!confirm) return;
+
         var secondary = _secondaryMoodIds.Take(2).ToList();
 
         var entry = _todayEntry ?? new JournalEntry();
@@ -423,6 +433,13 @@
             _pendingContent = html ?? "";
     }
 
+    private void OnDateChanged(DateTime? value)
+    {
+        var target = (value ?? DateTime.Today).Date;
+        _selectedDate = target;
+        Nav.NavigateTo($"/today?date={target:yyyy-MM-dd}");
+    }
+
     private string GetCategoryForMoodId(int moodId)
     {
         foreach (var group in _moodGroups)
@@ -440,7 +457,6 @@
         min-height: 120px;
         max-height: 240px;
         overflow: auto;
-        padding: 0.5rem;
         border: 1px solid var(--border);
         border-radius: 0.375rem;
         background: var(--surface);

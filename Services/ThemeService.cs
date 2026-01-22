@@ -16,12 +16,15 @@ public class ThemeService
         await ApplyThemeAsync(js, saved);
     }
 
+    public event Action? OnThemeChanged;
+
     public async Task SetThemeAsync(string theme, IJSRuntime js)
     {
         var normalized = theme == "dark" ? "dark" : "light";
         CurrentTheme = normalized;
         Preferences.Set(ThemeKey, normalized);
         await ApplyThemeAsync(js, normalized);
+        OnThemeChanged?.Invoke();
     }
 
     private static Task ApplyThemeAsync(IJSRuntime js, string theme)
