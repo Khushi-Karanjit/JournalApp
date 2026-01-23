@@ -6,143 +6,100 @@
 @inject NavigationManager Nav
 @inject IJSRuntime JS
 
-<h3 class="mb-3">Journal App</h3>
+<MudText Typo="Typo.h4" Class="mb-4">Search Journal</MudText>
 
-<!-- Top row: Search + Filter + Sort + Button -->
-<div class="row g-3 align-items-center mb-3">
-    <div class="col-md-5">
-        <input class="form-control"
-               placeholder="Search entries..."
-               @bind="searchText" />
-    </div>
+<!-- Filters -->
+<MudPaper Class="pa-4 mb-4 rounded-xl" Elevation="0" Outlined="true">
+    <MudGrid>
+        <MudItem xs="12" md="5">
+            <MudTextField @bind-Value="searchText" Label="Search entries..." Variant="Variant.Outlined" Margin="Margin.Dense" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" />
+        </MudItem>
+        <MudItem xs="6" md="3">
+            <MudSelect T="int" @bind-Value="moodFilterId" Label="Mood" Variant="Variant.Outlined" Margin="Margin.Dense" AnchorOrigin="Origin.BottomCenter">
+                <MudSelectItem Value="0">All Moods</MudSelectItem>
+                @foreach (var m in moods)
+                {
+                    <MudSelectItem Value="@m.Id">@m.Name</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="6" md="2">
+            <MudSelect T="string" @bind-Value="sortOption" Label="Sort By" Variant="Variant.Outlined" Margin="Margin.Dense" AnchorOrigin="Origin.BottomCenter">
+                <MudSelectItem Value="@("date_desc")">Newest First</MudSelectItem>
+                <MudSelectItem Value="@("date_asc")">Oldest First</MudSelectItem>
+                <MudSelectItem Value="@("title_asc")">Title A-Z</MudSelectItem>
+                <MudSelectItem Value="@("title_desc")">Title Z-A</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" md="2" Class="d-flex align-center">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OnSearchClicked" FullWidth="true" Class="rounded-lg" StartIcon="@Icons.Material.Filled.Search">Search</MudButton>
+        </MudItem>
 
-    <div class="col-md-3">
-        <select class="form-select" @bind="moodFilterId">
-            <option value="0">Filter by Mood</option>
-            @foreach (var m in moods)
+        <MudItem xs="6" md="3">
+            <MudDatePicker Label="Start Date" @bind-Date="startDate" Variant="Variant.Outlined" Margin="Margin.Dense" />
+        </MudItem>
+        <MudItem xs="6" md="3">
+            <MudDatePicker Label="End Date" @bind-Date="endDate" Variant="Variant.Outlined" Margin="Margin.Dense" />
+        </MudItem>
+        <MudItem xs="12" md="6" Class="d-flex align-center">
+            <MudButton Variant="Variant.Text" Color="Color.Secondary" OnClick="ToggleTags">
+                @(_showTags ? "Hide Tags" : "Filter by Tags") (@selectedTagIds.Count selected)
+            </MudButton>
+        </MudItem>
+    </MudGrid>
+
+    @if (_showTags)
+    {
+        <MudDivider Class="my-3" />
+        <MudText Typo="Typo.caption" Class="mb-2 d-block">Select Tags:</MudText>
+        <div class="d-flex flex-wrap gap-2">
+            @foreach (var t in allTags)
             {
-                <option value="@m.Id">@m.Name</option>
+                var selected = selectedTagIds.Contains(t.Id);
+                <MudChip T="string" Variant="@(selected ? Variant.Filled : Variant.Outlined)" Color="@(selected ? Color.Primary : Color.Default)" OnClick="() => ToggleTag(t.Id)">@t.Name</MudChip>
             }
-        </select>
-    </div>
-
-    <div class="col-md-2">
-        <select class="form-select" @bind="sortOption">
-            <option value="date_desc">Sort by Date</option>
-            <option value="date_asc">Oldest First</option>
-            <option value="title_asc">Title A-Z</option>
-            <option value="title_desc">Title Z-A</option>
-        </select>
-    </div>
-
-    <div class="col-md-2 d-grid">
-        <button class="btn btn-primary" @onclick="OnSearchClicked">
-            Search
-        </button>
-    </div>
-</div>
-
-<!-- Date Range + Tags -->
-<div class="row g-3 align-items-center mb-3">
-    <div class="col-md-3">
-        <input type="date"
-               class="form-control"
-               @bind-value="startDate"
-               @bind-value:format="yyyy-MM-dd" />
-    </div>
-
-    <div class="col-md-3">
-        <input type="date"
-               class="form-control"
-               @bind-value="endDate"
-               @bind-value:format="yyyy-MM-dd" />
-    </div>
-
-    <div class="col-md-6">
-        <div class="d-flex justify-content-between align-items-center mb-2">
-            <div class="text-muted">Tags (@selectedTagIds.Count selected)</div>
-            <button class="btn btn-sm btn-outline-secondary" @onclick="ToggleTags">
-                @(_showTags ? "Hide tags" : "Show tags")
-            </button>
         </div>
-
-        @if (_showTags)
-        {
-            <div class="tag-panel">
-                <div class="d-flex flex-wrap gap-2">
-                    @foreach (var t in allTags)
-                    {
-                        var selected = selectedTagIds.Contains(t.Id);
-
-                        <button type="button"
-                                class="btn btn-sm @(selected ? "btn-dark" : "btn-outline-dark")"
-                                @onclick="() => ToggleTag(t.Id)">
-                            @t.Name
-                        </button>
-                    }
-                </div>
-            </div>
-        }
-    </div>
-</div>
+    }
+</MudPaper>
 
 <!-- Results List -->
-<div class="card">
-    <div class="card-body p-0">
-        @if (pagedResults.Count == 0)
-        {
-            <div class="p-3 text-muted">No matching entries found.</div>
-        }
-        else
-        {
+<MudPaper Class="rounded-xl" Elevation="0" Outlined="true">
+    @if (pagedResults.Count == 0)
+    {
+        <div class="pa-6 text-center">
+            <MudText Color="Color.Secondary">No matching entries found.</MudText>
+        </div>
+    }
+    else
+    {
+        <MudList T="JournalEntry" Clickable="true" DisablePadding="true">
             @foreach (var e in pagedResults)
             {
-                <div class="d-flex align-items-center justify-content-between border-bottom p-3">
-                    <div class="flex-grow-1">
-                        <div class="fw-semibold">
-                            @e.EntryDate.ToString("yyyy-MM-dd") - @e.Title
+                <MudListItem OnClick="@(() => OpenEntry(e.EntryDate))">
+                    <div class="d-flex justify-space-between align-center">
+                        <div>
+                            <MudText Typo="Typo.subtitle1" Color="Color.Primary" Class="fw-bold">@e.EntryDate.ToString("yyyy-MM-dd") - @e.Title</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
+                                Mood: @GetMoodName(e.PrimaryMoodId) • Words: @CountWords(e.Content)
+                            </MudText>
                         </div>
-                        <div class="text-muted" style="font-size:0.9rem;">
-                            Mood: @GetMoodName(e.PrimaryMoodId) Words: @CountWords(e.Content)
-
+                        <div class="d-flex gap-2">
+                            <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Primary" OnClick="@((MouseEventArgs x) => OpenEntry(e.EntryDate))">View</MudButton>
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" OnClick="@((MouseEventArgs x) => DeleteEntry(e.EntryDate))" />
                         </div>
                     </div>
-
-                    <div class="d-flex align-items-center gap-2">
-                        <button class="btn btn-sm btn-outline-primary"
-                                @onclick="() => OpenEntry(e.EntryDate)">
-                            View
-                        </button>
-
-                        <button class="btn btn-sm btn-outline-danger"
-                                title="Delete"
-                                @onclick="() => DeleteEntry(e.EntryDate)">
-                            X
-                        </button>
-                    </div>
-                </div>
+                </MudListItem>
+                <MudDivider />
             }
-        }
-    </div>
-</div>
+        </MudList>
+    }
+</MudPaper>
 
 <!-- Pagination -->
-<div class="d-flex justify-content-center align-items-center gap-3 mt-4 mb-4">
-    <button class="btn btn-outline-secondary btn-sm"
-            disabled="@(currentPage <= 1)"
-            @onclick="PrevPage">
-        Previous
-    </button>
-
-    <div class="text-muted">
-        Page @currentPage of @totalPages
-    </div>
-
-    <button class="btn btn-outline-secondary btn-sm"
-            disabled="@(currentPage >= totalPages)"
-            @onclick="NextPage">
-        Next
-    </button>
+<div class="d-flex justify-center align-center mt-4 gap-4">
+    <MudButton Variant="Variant.Outlined" Disabled="@(currentPage <= 1)" OnClick="PrevPage">Previous</MudButton>
+    <MudText Color="Color.Secondary">Page @currentPage of @totalPages</MudText>
+    <MudButton Variant="Variant.Outlined" Disabled="@(currentPage >= totalPages)" OnClick="NextPage">Next</MudButton>
 </div>
 
 @code {
@@ -271,14 +228,3 @@
         return text.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
     }
 }
-
-<style>
-    .tag-panel {
-        max-height: 180px;
-        overflow: auto;
-        padding: 0.5rem;
-        border: 1px solid var(--border);
-        border-radius: 0.375rem;
-        background: var(--surface);
-    }
-</style>

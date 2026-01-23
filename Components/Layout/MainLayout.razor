@@ -36,7 +36,7 @@ else
     <MudLayout>
 
         <!-- AppBar -->
-        <MudAppBar Elevation="1" Style="background-color: var(--mud-palette-appbar-background); color: var(--mud-palette-text-primary);">
+        <MudAppBar Elevation="1" Fixed="true" Style="background-color: var(--mud-palette-appbar-background); color: var(--mud-palette-text-primary);">
             <MudIconButton Icon="@Icons.Material.Filled.Menu"
                            Color="Color.Inherit"
                            Edge="Edge.Start"
@@ -51,6 +51,7 @@ else
         <!-- Drawer -->
         <MudDrawer @bind-Open="_drawerOpen"
                    Variant="DrawerVariant.Responsive"
+                   ClipMode="DrawerClipMode.Always"
                    Breakpoint="Breakpoint.Md"
                    Elevation="1">
 
@@ -61,6 +62,8 @@ else
                 <MudNavLink Href="journal-list">Journal List</MudNavLink>
                 <MudNavLink Href="calendar">Calendar</MudNavLink>
                 <MudNavLink Href="settings">Settings</MudNavLink>
+                <MudDivider Class="my-2" />
+                <MudNavLink OnClick="Logout" Icon="@Icons.Material.Filled.Logout" IconColor="Color.Error">Logout</MudNavLink>
             </MudNavMenu>
 
         </MudDrawer>
@@ -117,6 +120,7 @@ else
     protected override async Task OnInitializedAsync()
     {
         ThemeService.OnThemeChanged += HandleThemeChanged;
+        Auth.OnAuthStateChanged += HandleAuthChanged;
         await ThemeService.InitializeAsync(JS);
         await Auth.InitializeAsync();
         _authReady = true;
@@ -127,12 +131,24 @@ else
         StateHasChanged();
     }
 
+    private void HandleAuthChanged()
+    {
+        StateHasChanged();
+    }
+
     public void Dispose()
     {
         ThemeService.OnThemeChanged -= HandleThemeChanged;
+        Auth.OnAuthStateChanged -= HandleAuthChanged;
     }
 
     private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
 
     private void GoToSettings() => Nav.NavigateTo("/settings");
+
+    private void Logout()
+    {
+        Auth.Logout();
+        Nav.NavigateTo("/");
+    }
 }

@@ -2,60 +2,61 @@
 @inject JournalApp.Services.ThemeService ThemeService
 @inject JournalApp.Services.AuthService Auth
 @inject JournalApp.Services.PdfExportService PdfExportService
+@inject NavigationManager Nav
 @inject IJSRuntime JS
 
-<h3 class="mb-3">Settings</h3>
+<MudText Typo="Typo.h4" Class="mb-4">Settings</MudText>
 
-<div class="card p-3" style="max-width:480px;">
-    <h6 class="mb-2">Theme</h6>
-    <div class="btn-group" role="group">
-        <button class="btn @(IsLight ? "btn-primary" : "btn-outline-secondary")"
-                @onclick="SetLight">
-            Light
-        </button>
-        <button class="btn @(IsDark ? "btn-primary" : "btn-outline-secondary")"
-                @onclick="SetDark">
-            Dark
-        </button>
-    </div>
-</div>
+<MudGrid>
+    <MudItem xs="12" md="6">
+        <MudStack Spacing="3">
+            <!-- Theme Settings -->
+            <MudPaper Class="pa-4 rounded-xl" Elevation="0" Outlined="true">
+                <MudText Typo="Typo.h6" Class="mb-3">Theme</MudText>
+                <MudButtonGroup Color="Color.Primary" Variant="Variant.Outlined" OverrideStyles="false">
+                    <MudButton Variant="@(IsLight ? Variant.Filled : Variant.Outlined)" OnClick="SetLight">Light Mode</MudButton>
+                    <MudButton Variant="@(IsDark ? Variant.Filled : Variant.Outlined)" OnClick="SetDark">Dark Mode</MudButton>
+                </MudButtonGroup>
+            </MudPaper>
 
-<div class="card p-3 mt-3" style="max-width:480px;">
-    <h6 class="mb-2">Change PIN</h6>
-    <input type="password" class="form-control mb-2" placeholder="Current PIN" @bind="currentPin" />
-    <input type="password" class="form-control mb-2" placeholder="New PIN" @bind="newPin" />
-    <input type="password" class="form-control mb-2" placeholder="Confirm New PIN" @bind="confirmPin" />
+            <!-- Export PDF -->
+            <MudPaper Class="pa-4 rounded-xl" Elevation="0" Outlined="true">
+                <MudText Typo="Typo.h6" Class="mb-3">Export PDF</MudText>
+                <MudStack Spacing="2">
+                    <MudDatePicker Label="Start Date" @bind-Date="exportStart" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                    <MudDatePicker Label="End Date" @bind-Date="exportEnd" Variant="Variant.Outlined" Margin="Margin.Dense" />
 
-    @if (!string.IsNullOrWhiteSpace(pinStatus))
-    {
-        <div class="text-muted mb-2">@pinStatus</div>
-    }
+                    @if (!string.IsNullOrWhiteSpace(exportStatus))
+                    {
+                        <MudText Color="@(exportStatus.Contains("Exporting") ? Color.Info : Color.Error)">@exportStatus</MudText>
+                    }
 
-    <button class="btn btn-primary" @onclick="ChangePin">Update PIN</button>
-</div>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ExportPdf" Class="mt-2 rounded-lg" StartIcon="@Icons.Material.Filled.PictureAsPdf">Export</MudButton>
+                </MudStack>
+            </MudPaper>
+        </MudStack>
+    </MudItem>
 
-<div class="card p-3 mt-3" style="max-width:480px;">
-    <h6 class="mb-2">Export PDF</h6>
-    <div class="row g-2">
-        <div class="col-6">
-            <input type="date" class="form-control"
-                   @bind-value="exportStart"
-                   @bind-value:format="yyyy-MM-dd" />
-        </div>
-        <div class="col-6">
-            <input type="date" class="form-control"
-                   @bind-value="exportEnd"
-                   @bind-value:format="yyyy-MM-dd" />
-        </div>
-    </div>
+    <!-- Change PIN -->
+    <MudItem xs="12" md="6">
+        <MudPaper Class="pa-4 rounded-xl" Elevation="0" Outlined="true">
+            <MudText Typo="Typo.h6" Class="mb-3">Change PIN</MudText>
+            <MudStack Spacing="2">
+                <MudTextField @bind-Value="currentPin" Label="Current PIN" InputType="InputType.Password" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                <MudTextField @bind-Value="newPin" Label="New PIN" InputType="InputType.Password" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                <MudTextField @bind-Value="confirmPin" Label="Confirm New PIN" InputType="InputType.Password" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                
+                @if (!string.IsNullOrWhiteSpace(pinStatus))
+                {
+                    <MudText Color="@(pinStatus.Contains("updated") ? Color.Success : Color.Error)">@pinStatus</MudText>
+                }
 
-    @if (!string.IsNullOrWhiteSpace(exportStatus))
-    {
-        <div class="text-muted mt-2">@exportStatus</div>
-    }
-
-    <button class="btn btn-primary mt-2" @onclick="ExportPdf">Export</button>
-</div>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ChangePin" Class="mt-2 rounded-lg">Update PIN</MudButton>
+            </MudStack>
+        </MudPaper>
+        
+    </MudItem>
+</MudGrid>
 
 @code {
     private bool IsLight => ThemeService.CurrentTheme == "light";
@@ -105,16 +106,22 @@
         currentPin = "";
         newPin = "";
         confirmPin = "";
-        pinStatus = "PIN updated.";
+        pinStatus = "PIN updated successfully.";
     }
 
-    private DateTime exportStart = DateTime.Today.AddDays(-30);
-    private DateTime exportEnd = DateTime.Today;
+    private DateTime? exportStart = DateTime.Today.AddDays(-30);
+    private DateTime? exportEnd = DateTime.Today;
     private string exportStatus = "";
 
     private async Task ExportPdf()
     {
-        if (exportEnd.Date < exportStart.Date)
+        if (exportStart == null || exportEnd == null)
+        {
+             exportStatus = "Please select start and end dates.";
+             return;
+        }
+
+        if (exportEnd.Value.Date < exportStart.Value.Date)
         {
             exportStatus = "End date must be after start date.";
             return;
@@ -123,7 +130,7 @@
         exportStatus = "Exporting...";
         try
         {
-            var result = await PdfExportService.ExportEntriesAsync(exportStart, exportEnd);
+            var result = await PdfExportService.ExportEntriesAsync(exportStart.Value, exportEnd.Value);
             exportStatus = result.Message;
         }
         catch (Exception ex)

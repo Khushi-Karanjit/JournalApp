@@ -27,6 +27,8 @@ public class AuthService
         if (!HasAccount) IsLoggedIn = false;
     }
 
+    public event Action? OnAuthStateChanged;
+
     // ✅ These two methods are what your UI is asking for
     public async Task SetPinAsync(string pin)
     {
@@ -37,6 +39,7 @@ public class AuthService
 
         HasAccount = true;
         IsLoggedIn = true; // IMPORTANT
+        OnAuthStateChanged?.Invoke();
     }
 
 
@@ -55,6 +58,7 @@ public class AuthService
         SetUsername(username);
         await SetPinAsync(pin);
         IsLoggedIn = true;
+        OnAuthStateChanged?.Invoke();
     }
 
     public async Task<bool> LoginAsync(string pin)
@@ -65,6 +69,7 @@ public class AuthService
         {
             HasAccount = false;
             IsLoggedIn = false;
+            OnAuthStateChanged?.Invoke();
             return false;
         }
 
@@ -73,10 +78,12 @@ public class AuthService
         if (stored.Trim() == pin.Trim())
         {
             IsLoggedIn = true;
+            OnAuthStateChanged?.Invoke();
             return true;
         }
 
         IsLoggedIn = false;
+        OnAuthStateChanged?.Invoke();
         return false;
     }
 
@@ -91,6 +98,7 @@ public class AuthService
     public void Logout()
     {
         IsLoggedIn = false;
+        OnAuthStateChanged?.Invoke();
     }
 
     // Optional helper (useful during testing)
@@ -105,5 +113,6 @@ public class AuthService
         SecureStorage.Remove(PinKey);
         HasAccount = false;
         IsLoggedIn = false;
+        OnAuthStateChanged?.Invoke();
     }
 }

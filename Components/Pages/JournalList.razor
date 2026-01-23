@@ -4,64 +4,54 @@
 @inject NavigationManager Nav
 @inject IJSRuntime JS
 
-<h3 class="mb-3">Journal Entries</h3>
+<MudText Typo="Typo.h4" Class="mb-4">Journal Entries</MudText>
 
-<div class="d-flex align-items-center justify-content-between mb-3">
-    <div class="text-muted">Total: @totalCount</div>
-    <div class="d-flex align-items-center gap-2">
-        <label class="form-label mb-0">Page size</label>
-        <select class="form-select form-select-sm" style="width:90px" @bind="pageSize" @bind:after="OnPageSizeChanged">
-            <option value="10">10</option>
-            <option value="20">20</option>
-        </select>
+<div class="d-flex justify-space-between align-center mb-3">
+    <MudText Color="Color.Secondary">Total: @totalCount</MudText>
+    <div class="d-flex align-center gap-2">
+        <MudText Typo="Typo.body2">Page Size:</MudText>
+        <MudSelect T="int" Value="pageSize" ValueChanged="OnPageSizeChanged" Variant="Variant.Outlined" Margin="Margin.Dense" Style="width:80px" AnchorOrigin="Origin.BottomCenter">
+            <MudSelectItem Value="10">10</MudSelectItem>
+            <MudSelectItem Value="20">20</MudSelectItem>
+        </MudSelect>
     </div>
 </div>
 
-<div class="card">
-    <div class="card-body p-0">
-        @if (entries.Count == 0)
-        {
-            <div class="p-3 text-muted">No entries yet.</div>
-        }
-        else
-        {
+<MudPaper Class="rounded-xl" Elevation="0" Outlined="true">
+    @if (entries.Count == 0)
+    {
+        <div class="pa-6 text-center">
+            <MudText Color="Color.Secondary">No entries yet.</MudText>
+        </div>
+    }
+    else
+    {
+        <MudList T="JournalEntry" Clickable="true" DisablePadding="true">
             @foreach (var e in entries)
             {
-                <div class="list-group-item d-flex justify-content-between align-items-center w-100 border-0 border-bottom p-3">
-                    <div>
-                        <div class="fw-semibold">@e.EntryDate.ToString("yyyy-MM-dd")</div>
-                        <div class="text-muted" style="font-size:0.9rem;">@e.Title</div>
+                <MudListItem OnClick="@(() => OpenEntryView(e.EntryDate))">
+                    <div class="d-flex justify-space-between align-center w-100">
+                        <div>
+                            <MudText Typo="Typo.subtitle1" Class="fw-bold">@e.EntryDate.ToString("yyyy-MM-dd")</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">@e.Title</MudText>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Secondary" OnClick="@((MouseEventArgs x) => OpenEntryView(e.EntryDate))">View</MudButton>
+                            <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Error" OnClick="@((MouseEventArgs x) => DeleteEntryAsync(e.EntryDate))">Delete</MudButton>
+                        </div>
                     </div>
-                    <div class="d-flex gap-2">
-                        <button class="btn btn-outline-secondary btn-sm" @onclick="() => OpenEntryView(e.EntryDate)">
-                            View
-                        </button>
-                        <button class="btn btn-outline-danger btn-sm" @onclick="() => DeleteEntryAsync(e.EntryDate)">
-                            Delete
-                        </button>
-                    </div>
-                </div>
+                </MudListItem>
+                <MudDivider />
             }
-        }
-    </div>
-</div>
+        </MudList>
+    }
+</MudPaper>
 
-<div class="d-flex justify-content-center align-items-center gap-3 mt-4 mb-4">
-    <button class="btn btn-outline-secondary btn-sm"
-            disabled="@(currentPage <= 1)"
-            @onclick="PrevPage">
-        Previous
-    </button>
-
-    <div class="text-muted">
-        Page @currentPage of @totalPages
-    </div>
-
-    <button class="btn btn-outline-secondary btn-sm"
-            disabled="@(currentPage >= totalPages)"
-            @onclick="NextPage">
-        Next
-    </button>
+<!-- Pagination -->
+<div class="d-flex justify-center align-center mt-4 gap-4">
+    <MudButton Variant="Variant.Outlined" Disabled="@(currentPage <= 1)" OnClick="PrevPage">Previous</MudButton>
+    <MudText Color="Color.Secondary">Page @currentPage of @totalPages</MudText>
+    <MudButton Variant="Variant.Outlined" Disabled="@(currentPage >= totalPages)" OnClick="NextPage">Next</MudButton>
 </div>
 
 @code {
@@ -86,8 +76,9 @@
         entries.AddRange(await EntryService.GetPagedAsync(currentPage, pageSize));
     }
 
-    private async void OnPageSizeChanged()
+    private async Task OnPageSizeChanged(int newSize)
     {
+        pageSize = newSize;
         currentPage = 1;
         await LoadPageAsync();
     }
@@ -108,12 +99,6 @@
             currentPage++;
             await LoadPageAsync();
         }
-    }
-
-    private void OpenEntry(DateTime date)
-    {
-        var formatted = date.ToString("yyyy-MM-dd");
-        Nav.NavigateTo($"/entry?date={formatted}");
     }
 
     private void OpenEntryView(DateTime date)

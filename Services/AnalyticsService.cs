@@ -122,6 +122,7 @@ public class AnalyticsService
         return new AnalyticsSummary(
             start,
             end,
+            totalEntries,
             categoryCounts,
             categoryPercentages,
             moodCounts,
@@ -146,6 +147,7 @@ public class AnalyticsService
     public record AnalyticsSummary(
         DateTime StartDate,
         DateTime EndDate,
+        int TotalEntries,
         List<CategoryCountItem> MoodCategoryCounts,
         List<CategoryPercentItem> MoodCategoryPercentages,
         List<MoodCountItem> MoodCounts,
