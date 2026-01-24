@@ -3,7 +3,7 @@
 public class DiaryEntry
 {
     public Guid EntryId { get; set; }
-    public Guid OwnerId { get; set; }
+    public string OwnerId { get; set; } = "";
     public DateOnly EntryDay { get; set; }
 
     public string Title { get; set; } = "";

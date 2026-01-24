@@ -11,7 +11,7 @@ public class TagCatalog
         _context = context;
     }
 
-    public List<Tag> GetUserTags(Guid userId)
+    public List<Tag> GetUserTags(string userId)
     {
         return _context.Tags
             .Where(t => t.UserId == userId)

@@ -11,14 +11,14 @@ public class DiaryEntryService
         _context = context;
     }
 
-    public DiaryEntry? GetEntryForDay(Guid userId, DateOnly day)
+    public DiaryEntry? GetEntryForDay(string userId, DateOnly day)
     {
         return _context.Entries
             .FirstOrDefault(e => e.OwnerId == userId && e.EntryDay == day);
     }
 
     // Feature 1: One entry per day (create or update)
-    public DiaryEntry UpsertForDay(Guid userId, DateOnly day, DiaryEntry draft)
+    public DiaryEntry UpsertForDay(string userId, DateOnly day, DiaryEntry draft)
     {
         var existing = GetEntryForDay(userId, day);
         var now = DateTime.Now;
@@ -59,7 +59,7 @@ public class DiaryEntryService
         return existing;
     }
 
-    public bool DeleteForDay(Guid userId, DateOnly day)
+    public bool DeleteForDay(string userId, DateOnly day)
     {
         var existing = GetEntryForDay(userId, day);
         if (existing is null) return false;

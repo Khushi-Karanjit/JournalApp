@@ -12,7 +12,7 @@ public class JournalQueryService
     }
 
     public List<DiaryEntry> FindEntries(
-        Guid userId,
+        string userId,
         string? searchText,
         DateOnly? start,
         DateOnly? end,

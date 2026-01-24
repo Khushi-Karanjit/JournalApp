@@ -1,71 +1,94 @@
-using Microsoft.Maui.Storage;
+using System.Security.Cryptography;
+using System.Text;
+using JournalApp.Data;
+using JournalApp.Models;
 
 namespace JournalApp.Services;
 
 public class AuthService
 {
-    private const string PinKey = "APP_PIN";
-    private const string UserKey = "APP_USERNAME";
+    private User? _currentUser;
 
     public bool IsLoggedIn { get; private set; }
-
-    // Avoid SecureStorage.GetAsync(...).Result. Use this cached flag instead.
     public bool HasAccount { get; private set; }
+    public string? Username => _currentUser?.Username;
+    public string? UserId => _currentUser?.Id;
 
-    public string? Username { get; private set; }
-
-    /// <summary>
-    /// Call once at startup to populate HasAccount + Username.
-    /// </summary>
     public async Task InitializeAsync()
     {
-        Username = Preferences.Get(UserKey, null);
-        var pin = await SecureStorage.GetAsync(PinKey);
-        HasAccount = !string.IsNullOrWhiteSpace(pin);
+        _currentUser = await JournalDatabase.GetUserAsync();
+        
+        if (_currentUser != null && !string.IsNullOrEmpty(_currentUser.PinHash))
+        {
+            HasAccount = true;
+        }
+        else
+        {
+            HasAccount = false;
+        }
 
-        // If no PIN exists, user is effectively not logged in
+        // If not logged in, IsLoggedIn remains false (default)
         if (!HasAccount) IsLoggedIn = false;
     }
 
     public event Action? OnAuthStateChanged;
 
-    // ✅ These two methods are what your UI is asking for
     public async Task SetPinAsync(string pin)
     {
         if (string.IsNullOrWhiteSpace(pin))
             throw new ArgumentException("PIN cannot be empty.", nameof(pin));
 
-        await SecureStorage.SetAsync(PinKey, pin);
+        if (_currentUser == null)
+        {
+             _currentUser = new User();
+        }
+
+        _currentUser.PinHash = HashPin(pin);
+        
+        await JournalDatabase.SaveUserAsync(_currentUser);
 
         HasAccount = true;
-        IsLoggedIn = true; // IMPORTANT
+        IsLoggedIn = true; 
         OnAuthStateChanged?.Invoke();
     }
 
-
-    public void SetUsername(string username)
+    public async Task SetUsername(string username)
     {
         if (string.IsNullOrWhiteSpace(username))
             throw new ArgumentException("Username cannot be empty.", nameof(username));
 
-        Preferences.Set(UserKey, username);
-        Username = username;
+        if (_currentUser == null)
+        {
+            _currentUser = new User { Username = username };
+        }
+        else
+        {
+            _currentUser.Username = username;
+        }
+
+        await JournalDatabase.SaveUserAsync(_currentUser);
     }
 
-    // Keep your existing Register flow but implement using the setters
     public async Task RegisterAsync(string username, string pin)
     {
-        SetUsername(username);
-        await SetPinAsync(pin);
+        // Ensure user object exists or verify uniqueness if we supported multiple users
+        if (_currentUser == null) _currentUser = new User();
+        
+        _currentUser.Username = username;
+        _currentUser.PinHash = HashPin(pin);
+
+        await JournalDatabase.SaveUserAsync(_currentUser);
+
+        HasAccount = true;
         IsLoggedIn = true;
         OnAuthStateChanged?.Invoke();
     }
 
     public async Task<bool> LoginAsync(string pin)
     {
-        var stored = await SecureStorage.GetAsync(PinKey);
-
-        if (string.IsNullOrWhiteSpace(stored))
+        if (_currentUser == null) await InitializeAsync();
+        
+        if (_currentUser == null || string.IsNullOrEmpty(_currentUser.PinHash))
         {
             HasAccount = false;
             IsLoggedIn = false;
@@ -75,7 +98,7 @@ public class AuthService
 
         HasAccount = true;
 
-        if (stored.Trim() == pin.Trim())
+        if (VerifyHash(pin, _currentUser.PinHash))
         {
             IsLoggedIn = true;
             OnAuthStateChanged?.Invoke();
@@ -89,11 +112,11 @@ public class AuthService
 
     public async Task<bool> VerifyPinAsync(string pin)
     {
-        var stored = await SecureStorage.GetAsync(PinKey);
-        if (string.IsNullOrWhiteSpace(stored)) return false;
-        return stored.Trim() == pin.Trim();
+        if (_currentUser == null) await InitializeAsync();
+        if (_currentUser == null || string.IsNullOrEmpty(_currentUser.PinHash)) return false;
+        
+        return VerifyHash(pin, _currentUser.PinHash);
     }
-
 
     public void Logout()
     {
@@ -101,18 +124,38 @@ public class AuthService
         OnAuthStateChanged?.Invoke();
     }
 
-    // Optional helper (useful during testing)
-    public void ClearUsername()
+    public async Task ClearUsername()
     {
-        Preferences.Remove(UserKey);
-        Username = null;
+        if (_currentUser != null)
+        {
+            _currentUser.Username = "Default User";
+            await JournalDatabase.SaveUserAsync(_currentUser);
+        }
     }
 
-    public void ClearPin()
+    public async Task ClearPin()
     {
-        SecureStorage.Remove(PinKey);
-        HasAccount = false;
-        IsLoggedIn = false;
-        OnAuthStateChanged?.Invoke();
+        if (_currentUser != null)
+        {
+            _currentUser.PinHash = null;
+            await JournalDatabase.SaveUserAsync(_currentUser);
+            HasAccount = false;
+            IsLoggedIn = false;
+            OnAuthStateChanged?.Invoke();
+        }
+    }
+
+    private static string HashPin(string pin)
+    {
+        using var sha256 = SHA256.Create();
+        var bytes = Encoding.UTF8.GetBytes(pin);
+        var hash = sha256.ComputeHash(bytes);
+        return Convert.ToBase64String(hash);
+    }
+
+    private static bool VerifyHash(string pin, string storedHash)
+    {
+        var hash = HashPin(pin);
+        return hash == storedHash;
     }
 }
