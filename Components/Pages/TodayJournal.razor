@@ -87,8 +87,8 @@
         <h5 class="mb-3">Mood</h5>
 
         <div class="mb-3">
-            <label class="form-label">Primary mood (required)</label>
-            <select class="form-select" @bind="_primaryMoodId">
+            <label class="form-label" for="primary-mood">Primary mood (required)</label>
+            <select class="form-select" @bind="_primaryMoodId" id="primary-mood" name="primary-mood" aria-label="Primary mood">
                 <option value="0">Select a mood</option>
                 @foreach (var group in _moodGroups)
                 {
@@ -157,7 +157,10 @@
         <div class="input-group">
             <input class="form-control"
                    placeholder="Add custom tag..."
-                   @bind="_newTagText" />
+                   @bind="_newTagText" 
+                   id="custom-tag"
+                   name="custom-tag"
+                   aria-label="Add custom tag"/>
             <button class="btn btn-outline-primary"
                     type="button"
                     @onclick="AddCustomTag">
@@ -358,43 +361,51 @@
 
     private async Task Save()
     {
-        if (_primaryMoodId <= 0)
+        try
         {
-            _status = "Primary mood is required.";
-            return;
-        }
+            if (_primaryMoodId <= 0)
+            {
+                _status = "Primary mood is required.";
+                return;
+            }
 
-        _content = await JS.InvokeAsync<string>("getQuillHtml");
-        if (string.IsNullOrWhiteSpace(_title) && string.IsNullOrWhiteSpace(_content))
+            _content = await JS.InvokeAsync<string>("getQuillHtml");
+            if (string.IsNullOrWhiteSpace(_title) && string.IsNullOrWhiteSpace(_content))
+            {
+                _status = "Add a title or some content before saving.";
+                return;
+            }
+
+            var action = _todayEntry is null ? "save" : "update";
+            var confirm = await JS.InvokeAsync<bool>(
+                "confirm",
+                $"Do you want to {action} the entry for {DisplayDate:dddd, MMM dd}?");
+            if (!confirm) return;
+
+            var secondary = _secondaryMoodIds.Take(2).ToList();
+
+            var entry = _todayEntry ?? new JournalEntry();
+            entry.EntryDate = Date?.Date ?? DateTime.Today;
+            entry.Title = _title?.Trim();
+            entry.Content = _content ?? "";
+            entry.PrimaryMoodId = _primaryMoodId;
+            entry.SecondaryMood1Id = secondary.Count > 0 ? secondary[0] : null;
+            entry.SecondaryMood2Id = secondary.Count > 1 ? secondary[1] : null;
+            entry.Category = GetCategoryForMoodId(_primaryMoodId);
+
+            _todayEntry = await EntryService.UpsertAsync(entry);
+            await TagService.SetTagsForEntryAsync(_todayEntry.Id, _selectedTagIds.ToList());
+
+            _hasTodayEntry = true;
+
+            _status = "Saved successfully.";
+            await LoadTodayAsync();
+        }
+        catch (Exception ex)
         {
-            _status = "Add a title or some content before saving.";
-            return;
+            _status = $"Error saving entry: {ex.Message}";
+            Console.WriteLine($"[Save Error] {ex}");
         }
-
-        var action = _todayEntry is null ? "save" : "update";
-        var confirm = await JS.InvokeAsync<bool>(
-            "confirm",
-            $"Do you want to {action} the entry for {DisplayDate:dddd, MMM dd}?");
-        if (!confirm) return;
-
-        var secondary = _secondaryMoodIds.Take(2).ToList();
-
-        var entry = _todayEntry ?? new JournalEntry();
-        entry.EntryDate = Date?.Date ?? DateTime.Today;
-        entry.Title = _title?.Trim();
-        entry.Content = _content ?? "";
-        entry.PrimaryMoodId = _primaryMoodId;
-        entry.SecondaryMood1Id = secondary.Count > 0 ? secondary[0] : null;
-        entry.SecondaryMood2Id = secondary.Count > 1 ? secondary[1] : null;
-        entry.Category = GetCategoryForMoodId(_primaryMoodId);
-
-        _todayEntry = await EntryService.UpsertAsync(entry);
-        await TagService.SetTagsForEntryAsync(_todayEntry.Id, _selectedTagIds.ToList());
-
-        _hasTodayEntry = true;
-
-        _status = "Saved successfully.";
-        await LoadTodayAsync();
     }
 
     private async Task DeleteToday()
