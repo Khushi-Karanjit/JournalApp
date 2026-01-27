@@ -3,36 +3,8 @@
 @inject AuthService Auth
 @inject NavigationManager Nav
 
-<h3>Set Up Your Journal</h3>
-
-<div class="card p-3" style="max-width:400px;">
-    <div class="mb-3">
-        <label>Username</label>
-        <input class="form-control" @bind="username" />
-    </div>
-
-    <div class="mb-3">
-        <label>Choose PIN</label>
-        <input type="password" class="form-control" @bind="pin" />
-    </div>
-
-    <button class="btn btn-primary w-100" @onclick="Save">
-        Save & Continue
-    </button>
-</div>
+<JournalApp.Components.Pages.Login />
 
 @code {
-    private string username = "";
-    private string pin = "";
-
-    private async Task Save()
-    {
-        if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(pin))
-            return;
-
-        await Auth.SetUsername(username);
-        await Auth.SetPinAsync(pin);
-
-        Nav.NavigateTo("/", true);
-    }
+    // Both Registration and Login are now handled by the unified Login component
 }

@@ -15,21 +15,18 @@
         <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
     </div>
 }
-else if (!Auth.HasAccount)
+else if (!Auth.HasAccount || !Auth.IsLoggedIn)
 {
-    <MudContainer MaxWidth="MaxWidth.Small" Class="mt-8">
-        <MudPaper Class="pa-6">
+    <div class="auth-wrapper">
+        @if (!Auth.HasAccount)
+        {
             <JournalApp.Components.Pages.SetupPin />
-        </MudPaper>
-    </MudContainer>
-}
-else if (!Auth.IsLoggedIn)
-{
-    <MudContainer MaxWidth="MaxWidth.Small" Class="mt-8">
-        <MudPaper Class="pa-6">
+        }
+        else
+        {
             <JournalApp.Components.Pages.Login />
-        </MudPaper>
-    </MudContainer>
+        }
+    </div>
 }
 else
 {
@@ -93,7 +90,7 @@ else
             TextSecondary = "#555555",
             ActionDefault = "#5f7f76",      // Icons/Actions
             ActionDisabled = "#bdbdbd",
-            DrawerBackground = "#fbf7f2",   // Surface (Cards/Drawer)
+            DrawerBackground = "#f5f0e6",   // Matched to AppBar
             DrawerText = "#1c1c1c",
             DrawerIcon = "#5f7f76"
         },
@@ -108,7 +105,7 @@ else
             TextSecondary = "#b0b0b0",
             ActionDefault = "#6f9b90",
             ActionDisabled = "#555555",
-            DrawerBackground = "#1f1f1f",
+            DrawerBackground = "#1f1f1f",   // Matched to AppBar
             DrawerText = "#ffffff",
             DrawerIcon = "#6f9b90"
         }

@@ -2,44 +2,56 @@
 @inject JournalApp.Services.AuthService Auth
 @inject NavigationManager Nav
 
-<MudPaper Class="surface-card auth-card">
-    <MudStack Spacing="2">
-        <MudText Typo="Typo.h5">Journal Login</MudText>
-        <MudText Class="muted-text">
+<div class="square-auth-card">
+    <MudPaper Class="pa-8 d-flex flex-column justify-center align-center h-100" Elevation="4">
+        <div class="w-100 text-center mb-6">
+             <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Large" Color="Color.Primary" Class="mb-2" />
+             <MudText Typo="Typo.h5" Class="fw-bold">Journal Login</MudText>
+             <MudText Class="muted-text">
+                @if (!Auth.HasAccount)
+                {
+                    <span>Create your account</span>
+                }
+                else
+                {
+                    <span>Welcome back, @Auth.Username</span>
+                }
+            </MudText>
+        </div>
+
+        <MudStack Spacing="4" Class="w-100">
             @if (!Auth.HasAccount)
             {
-                <span>Create your account</span>
+                <MudTextField T="string"
+                              Label="Username"
+                              Variant="Variant.Outlined"
+                              @bind-Value="username"
+                              FullWidth="true" />
             }
-            else
-            {
-                <span>Welcome back, @Auth.Username</span>
-            }
-        </MudText>
 
-        @if (!Auth.HasAccount)
-        {
             <MudTextField T="string"
-                          Label="Username"
+                          Label="PIN"
                           Variant="Variant.Outlined"
-                          @bind-Value="username" />
-        }
+                          InputType="InputType.Password"
+                          @bind-Value="pin"
+                          FullWidth="true"
+                          OnKeyDown="@(e => e.Key == "Enter" ? Submit() : Task.CompletedTask)" />
 
-        <MudTextField T="string"
-                      Label="PIN"
-                      Variant="Variant.Outlined"
-                      InputType="InputType.Password"
-                      @bind-Value="pin" />
+            @if (!string.IsNullOrEmpty(error))
+            {
+                <MudText Color="Color.Error" Typo="Typo.caption" Class="text-center">@error</MudText>
+            }
 
-        @if (!string.IsNullOrEmpty(error))
-        {
-            <MudText Color="Color.Error">@error</MudText>
-        }
-
-        <MudButton Color="Color.Primary" Variant="Variant.Filled" FullWidth="true" OnClick="Submit">
-            @(!Auth.HasAccount ? "Create Account" : "Login")
-        </MudButton>
-    </MudStack>
-</MudPaper>
+            <MudButton Color="Color.Primary" 
+                       Variant="Variant.Filled" 
+                       FullWidth="true" 
+                       OnClick="Submit"
+                       Class="rounded-pill py-3 mt-2">
+                @(!Auth.HasAccount ? "Create Account" : "Login")
+            </MudButton>
+        </MudStack>
+    </MudPaper>
+</div>
 
 @code {
     private string username = "";

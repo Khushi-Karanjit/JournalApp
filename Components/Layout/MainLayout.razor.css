@@ -21,29 +21,32 @@ main {
     align-items: center;
 }
 
-    .top-row ::deep a, .top-row ::deep .btn-link {
-        white-space: nowrap;
-        margin-left: 1.5rem;
-        text-decoration: none;
-    }
+.top-row ::deep a,
+.top-row ::deep .btn-link {
+    white-space: nowrap;
+    margin-left: 1.5rem;
+    text-decoration: none;
+}
 
-        .top-row ::deep a:hover, .top-row ::deep .btn-link:hover {
-            text-decoration: underline;
-        }
+.top-row ::deep a:hover,
+.top-row ::deep .btn-link:hover {
+    text-decoration: underline;
+}
 
-        .top-row ::deep a:first-child {
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
+.top-row ::deep a:first-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
 
 @media (max-width: 640.98px) {
     .top-row {
         justify-content: space-between;
     }
 
-        .top-row ::deep a, .top-row ::deep .btn-link {
-            margin-left: 0;
-        }
+    .top-row ::deep a,
+    .top-row ::deep .btn-link {
+        margin-left: 0;
+    }
 }
 
 @media (min-width: 641px) {
@@ -62,38 +65,41 @@ main {
 
     .top-row {
         background-color: var(--mud-palette-surface);
-    border-bottom: 1px solid var(--border);
-    height: 3.5rem;
-    display: flex;
-    align-items: center;
+        border-bottom: 1px solid var(--border);
+        height: 3.5rem;
+        display: flex;
+        align-items: center;
     }
 
     .top-row ::deep a,
-.top-row ::deep .btn-link {
-    color: var(--mud-palette-text-primary);
-    font-weight: 500;
-    opacity: 0.85;
-}
+    .top-row ::deep .btn-link {
+        color: var(--mud-palette-text-primary);
+        font-weight: 500;
+        opacity: 0.85;
+    }
 
-.top-row ::deep a:hover,
-.top-row ::deep .btn-link:hover {
-    opacity: 1;
-    text-decoration: underline;
-}
-.sidebar {
-    background-image: none; /* remove the gradient */
-    background-color: var(--mud-palette-drawer-background);
-}
+    .top-row ::deep a:hover,
+    .top-row ::deep .btn-link:hover {
+        opacity: 1;
+        text-decoration: underline;
+    }
+
+    .sidebar {
+        background-image: none;
+        /* remove the gradient */
+        background-color: var(--mud-palette-appbar-background);
+    }
 
 
 
-        .top-row.auth ::deep a:first-child {
-            flex: 1;
-            text-align: right;
-            width: 0;
-        }
+    .top-row.auth ::deep a:first-child {
+        flex: 1;
+        text-align: right;
+        width: 0;
+    }
 
-    .top-row, article {
+    .top-row,
+    article {
         padding-left: 2rem !important;
         padding-right: 1.5rem !important;
     }

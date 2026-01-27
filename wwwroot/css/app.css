@@ -224,9 +224,28 @@ body {
     box-shadow: var(--shadow);
 }
 
-.auth-card {
-    max-width: 380px;
-    margin: 0 auto;
+.auth-wrapper {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: var(--background);
+    z-index: 2000;
+}
+
+.square-auth-card {
+    width: 400px;
+    height: 400px;
+    max-width: 90vw;
+    max-height: 90vw;
+}
+
+.square-auth-card .mud-paper {
+    border-radius: 24px !important;
 }
 
 .compact-btn {
