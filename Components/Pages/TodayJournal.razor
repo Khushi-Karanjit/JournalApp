@@ -27,7 +27,7 @@
 
     <MudGrid Class="mb-4">
         <!-- xs stacks, md splits editor and preview -->
-        <MudItem xs="12" md="7">
+        <MudItem xs="12">
             <MudPaper Class="surface-card">
                 <MudTextField T="string"
                               Label="Title"
@@ -70,15 +70,6 @@
                         Last updated: @_todayEntry.UpdatedAt:g
                     </MudText>
                 }
-            </MudPaper>
-        </MudItem>
-
-        <MudItem xs="12" md="5">
-            <MudPaper Class="surface-card">
-                <MudText Typo="Typo.h6" Class="mb-2">Preview</MudText>
-                <MudPaper Class="pa-2 preview-box" Elevation="0">
-                    @((MarkupString)(_content ?? ""))
-                </MudPaper>
             </MudPaper>
         </MudItem>
     </MudGrid>
@@ -131,7 +122,7 @@
         </div>
     </div>
 
-    <div class="card p-3 rounded-card">
+    <div class="card p-3 rounded-card mb-3">
         <h5 class="mb-3">Tags</h5>
 
         @if (_availableTags.Count == 0)
@@ -182,6 +173,31 @@
         }
     </div>
 
+    <MudPaper Class="surface-card pa-4 mb-3">
+        <MudText Typo="Typo.h5" Class="mb-3">Journal Preview</MudText>
+        
+        <MudStack Spacing="1" Class="mb-4">
+            <MudText Typo="Typo.h6">@(_title ?? "Untitled")</MudText>
+            <MudText Typo="Typo.caption" Class="muted-text">@DisplayDate.ToString("MMMM dd, yyyy")</MudText>
+        </MudStack>
+
+        <MudDivider Class="my-3" />
+        
+        <div class="ql-editor preview-content">
+            @((MarkupString)(_content ?? ""))
+        </div>
+
+        @if (_selectedTags.Count > 0)
+        {
+            <div class="mt-4 d-flex flex-wrap gap-2">
+                @foreach (var t in _selectedTags)
+                {
+                    <span class="badge bg-light text-dark">#@t.Name</span>
+                }
+            </div>
+        }
+    </MudPaper>
+
   <div class="button-group">
     <button class="btn btn-outline"
             @onclick="DeleteToday"
@@ -198,7 +214,10 @@
 
 </MudContainer>
 
+@implements IDisposable
+
 @code {
+    private DotNetObjectReference<TodayJournal>? _objRef;
     [SupplyParameterFromQuery]
     public DateTime? Date { get; set; }
 
@@ -206,7 +225,8 @@
     {
         if (firstRender)
         {
-            JS.InvokeVoidAsync("initQuill", "journal");
+            _objRef = DotNetObjectReference.Create(this);
+            JS.InvokeVoidAsync("initQuill", "journal", _objRef);
             _editorReady = true;
 
             if (_pendingContent is not null)
@@ -215,6 +235,18 @@
                 _pendingContent = null;
             }
         }
+    }
+
+    [JSInvokable]
+    public void OnContentChanged(string html)
+    {
+        _content = html;
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        _objRef?.Dispose();
     }
 
     private JournalEntry? _todayEntry;
@@ -464,12 +496,15 @@
 }
 
 <style>
-    .preview-box {
-        min-height: 120px;
-        max-height: 240px;
-        overflow: auto;
-        border: 1px solid var(--border);
-        border-radius: 0.375rem;
-        background: var(--surface);
+    .preview-content {
+        min-height: 100px;
+        line-height: 1.6;
+    }
+    .preview-content ul, .preview-content ol {
+        padding-left: 2rem;
+        margin-bottom: 1rem;
+    }
+    .preview-content b, .preview-content strong {
+        font-weight: bold;
     }
 </style>

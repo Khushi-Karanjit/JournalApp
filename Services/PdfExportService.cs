@@ -86,8 +86,9 @@ public class PdfExportService
                             item.Item().Text($"Mood: {primary}{(secondary.Count > 0 ? " (+" + string.Join(", ", secondary) + ")" : "")}");
                             item.Item().Text($"Category: {category}");
                             item.Item().Text($"Tags: {(tagNames.Count > 0 ? string.Join(", ", tagNames) : "-")}");
-                            item.Item().Text("Content:");
-                            item.Item().Text(ToPlainText(entry.Content ?? ""));
+                            item.Item().PaddingTop(4).Text("Content:").SemiBold();
+                            
+                            RenderHtmlContent(item, entry.Content ?? "");
                         });
 
                         col.Item().Height(8);
@@ -99,10 +100,73 @@ public class PdfExportService
         return document.GeneratePdf();
     }
 
-    private static string ToPlainText(string html)
+    private static void RenderHtmlContent(ColumnDescriptor col, string html)
     {
-        if (string.IsNullOrWhiteSpace(html)) return "";
-        return Regex.Replace(html, "<.*?>", " ").Trim();
+        if (string.IsNullOrWhiteSpace(html)) return;
+
+        // Split by major block elements (p, li, blockquote)
+        // This is a simplified parser for Quill-generated HTML
+        var blocks = Regex.Split(html, @"(?=<(?:p|li|ul|ol|h[1-6]|blockquote)[^>]*>)");
+
+        foreach (var block in blocks)
+        {
+            if (string.IsNullOrWhiteSpace(block)) continue;
+
+            var cleanBlock = block.Trim();
+            bool isListItem = cleanBlock.StartsWith("<li", StringComparison.OrdinalIgnoreCase);
+            bool isHeading = Regex.IsMatch(cleanBlock, @"^<h[1-6]", RegexOptions.IgnoreCase);
+
+            col.Item().Row(row =>
+            {
+                if (isListItem)
+                {
+                    row.ConstantItem(15).Text("•");
+                }
+
+                row.RelativeItem().Text(text =>
+                {
+                    ParseInlineStyles(text, cleanBlock, isHeading);
+                });
+            });
+        }
+    }
+
+    private static void ParseInlineStyles(TextDescriptor text, string html, bool isHeading)
+    {
+        // Remove block tags but keep inline ones
+        var inlineContent = Regex.Replace(html, @"^<(?:p|li|ul|ol|h[1-6]|blockquote)[^>]*>|<\/(?:p|li|ul|ol|h[1-6]|blockquote)>", "");
+        
+        // Regex to find tags and text segments
+        var matches = Regex.Matches(inlineContent, @"(<[^>]+>|[^<]+)");
+
+        bool isBold = isHeading;
+        bool isItalic = false;
+        bool isUnderline = false;
+
+        foreach (Match match in matches)
+        {
+            var val = match.Value;
+            if (val.StartsWith("<"))
+            {
+                var tag = val.ToLower();
+                if (tag == "<strong>" || tag == "<b>") isBold = true;
+                else if (tag == "</strong>" || tag == "</b>") isBold = isHeading;
+                else if (tag == "<em>" || tag == "<i>") isItalic = true;
+                else if (tag == "</em>" || tag == "</i>") isItalic = false;
+                else if (tag == "<u>") isUnderline = true;
+                else if (tag == "</u>") isUnderline = false;
+                else if (tag == "<br>" || tag == "<br/>") text.EmptyLine();
+            }
+            else
+            {
+                var content = System.Net.WebUtility.HtmlDecode(val);
+                var span = text.Span(content);
+                if (isBold) span.SemiBold();
+                if (isItalic) span.Italic();
+                if (isUnderline) span.Underline();
+                if (isHeading) span.FontSize(13);
+            }
+        }
     }
 
     public record ExportResult(bool Ok, string Message)
