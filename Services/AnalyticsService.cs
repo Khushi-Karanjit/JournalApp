@@ -48,11 +48,12 @@ public class AnalyticsService
             .OrderByDescending(c => c.Count)
             .ToList();
 
+        var totalMoodInstances = categoryCounts.Sum(c => c.Count);
         var categoryPercentages = categoryCounts
             .Select(c => new CategoryPercentItem(
                 c.Category,
                 c.Count,
-                totalEntries == 0 ? 0 : Math.Round((double)c.Count / totalEntries * 100, 1)))
+                totalMoodInstances == 0 ? 0 : Math.Round((double)c.Count / totalMoodInstances * 100, 1)))
             .ToList();
 
         var mostFrequentMood = moodCounts.Count > 0
@@ -83,11 +84,12 @@ public class AnalyticsService
               ORDER BY Count DESC",
             start, end);
 
+        var totalTagAssignments = tagCategoryRows.Sum(t => t.Count);
         var tagBreakdown = tagCategoryRows
             .Select(t => new TagPercentItem(
                 t.Category,
                 t.Count,
-                totalEntries == 0 ? 0 : Math.Round((double)t.Count / totalEntries * 100, 1)))
+                totalTagAssignments == 0 ? 0 : Math.Round((double)t.Count / totalTagAssignments * 100, 1)))
             .ToList();
 
         var wordRows = await db.QueryAsync<EntryContentRow>(
