@@ -3,6 +3,7 @@
 @inject JournalApp.Services.EntryService EntryService
 @inject JournalApp.Services.MoodService MoodService
 @inject JournalApp.Services.TagService TagService
+@inject JournalApp.Services.PdfExportService ExportService
 @inject NavigationManager Nav
 
 <h3 class="mb-3">Journal Entry</h3>
@@ -22,7 +23,12 @@ else
                 <div class="text-muted">@_entry.EntryDate.ToString("yyyy-MM-dd")</div>
                 <h5 class="mb-2">@_entry.Title</h5>
             </div>
-            <button class="btn btn-outline-secondary btn-sm" @onclick="GoToEdit">Edit</button>
+            <div class="d-flex gap-2">
+                <button class="btn btn-outline-primary btn-sm" @onclick="ExportEntry" disabled="@_exporting">
+                    @(_exporting ? "Exporting..." : "Export to PDF")
+                </button>
+                <button class="btn btn-outline-secondary btn-sm" @onclick="GoToEdit">Edit</button>
+            </div>
         </div>
 
         <div class="mb-2">
@@ -43,7 +49,7 @@ else
 
         <div class="mt-3">
             <strong>Content:</strong>
-            <div class="mt-2" style="white-space: normal;">
+            <div class="mt-2 ql-editor entry-content" style="white-space: normal;">
                 @((MarkupString)(_entry.Content ?? ""))
             </div>
         </div>
@@ -59,6 +65,8 @@ else
     private readonly List<string> _secondaryMoods = new();
     private string _category = "-";
     private readonly List<string> _tags = new();
+    private bool _exporting;
+    private string? _status;
 
     protected override async Task OnInitializedAsync()
     {
@@ -99,9 +107,45 @@ else
         Nav.NavigateTo($"/today?date={formatted}");
     }
 
+    private async Task ExportEntry()
+    {
+        if (_entry is null || _exporting) return;
+
+        try
+        {
+            _exporting = true;
+            _status = "Generating PDF...";
+            
+            var result = await ExportService.ExportEntriesAsync(_entry.EntryDate, _entry.EntryDate);
+            _status = result.Message;
+        }
+        catch (Exception ex)
+        {
+            _status = $"Export failed: {ex.Message}";
+        }
+        finally
+        {
+            _exporting = false;
+        }
+    }
+
     private static string GetCategoryFromMood(List<Mood> moods, int moodId)
     {
         var mood = moods.FirstOrDefault(m => m.Id == moodId);
         return mood is null ? "-" : mood.Category;
     }
 }
+
+<style>
+    .entry-content {
+        line-height: 1.6;
+        padding: 0 !important; /* Reset ql-editor default padding */
+    }
+    .entry-content ul, .entry-content ol {
+        padding-left: 2rem;
+        margin-bottom: 1rem;
+    }
+    .entry-content b, .entry-content strong {
+        font-weight: bold;
+    }
+</style>

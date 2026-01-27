@@ -27,31 +27,39 @@ else
 {
     <MudGrid>
         <!-- Row 1: Key Metrics -->
-        <MudItem xs="12" sm="6" md="3">
+        <MudItem xs="12" sm="6" md="2">
             <MudPaper Class="pa-4 rounded-xl d-flex flex-column align-center justify-center mud-height-full" Elevation="0" Outlined="true">
                 <MudText Typo="Typo.caption" Color="Color.Secondary">Active Days</MudText>
-                <MudText Typo="Typo.h3" Color="Color.Primary" Class="fw-bold">@_analyticsSummary.TotalEntries</MudText>
+                <MudText Typo="Typo.h4" Color="Color.Primary" Class="fw-bold">@_analyticsSummary.TotalEntries</MudText>
                 <MudText Typo="Typo.caption" Color="Color.Secondary">days</MudText>
             </MudPaper>
         </MudItem>
 
-        <MudItem xs="12" sm="6" md="3">
+        <MudItem xs="12" sm="6" md="2">
+            <MudPaper Class="pa-4 rounded-xl d-flex flex-column align-center justify-center mud-height-full" Elevation="0" Outlined="true" Style="border-color: var(--mud-palette-error);">
+                <MudText Typo="Typo.caption" Color="Color.Error">Missed Days</MudText>
+                <MudText Typo="Typo.h4" Color="Color.Error" Class="fw-bold">@_analyticsSummary.MissedDates.Count</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Error">days</MudText>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="2">
             <MudPaper Class="pa-4 rounded-xl d-flex flex-column align-center justify-center mud-height-full" Elevation="0" Outlined="true">
                 <MudText Typo="Typo.caption" Color="Color.Secondary">Current Streak</MudText>
-                <MudText Typo="Typo.h3" Color="Color.Primary" Class="fw-bold">@_analyticsSummary.CurrentStreakDays</MudText>
+                <MudText Typo="Typo.h4" Color="Color.Primary" Class="fw-bold">@_analyticsSummary.CurrentStreakDays</MudText>
                 <MudText Typo="Typo.caption" Color="Color.Secondary">days</MudText>
             </MudPaper>
         </MudItem>
         
-        <MudItem xs="12" sm="6" md="3">
+        <MudItem xs="12" sm="6" md="2">
             <MudPaper Class="pa-4 rounded-xl d-flex flex-column align-center justify-center mud-height-full" Elevation="0" Outlined="true">
                 <MudText Typo="Typo.caption" Color="Color.Secondary">Longest Streak</MudText>
-                <MudText Typo="Typo.h3" Color="Color.Primary" Class="fw-bold">@_analyticsSummary.LongestStreakDays</MudText>
+                <MudText Typo="Typo.h4" Color="Color.Primary" Class="fw-bold">@_analyticsSummary.LongestStreakDays</MudText>
                 <MudText Typo="Typo.caption" Color="Color.Secondary">days</MudText>
             </MudPaper>
         </MudItem>
 
-        <MudItem xs="12" sm="6" md="3">
+        <MudItem xs="12" sm="6" md="4">
             <MudPaper Class="pa-4 rounded-xl d-flex flex-column align-center justify-center mud-height-full" Elevation="0" Outlined="true">
                 <MudText Typo="Typo.caption" Color="Color.Secondary">Most Frequent Mood</MudText>
                 <MudText Typo="Typo.h5" Color="Color.Primary" Class="fw-bold text-center">@_analyticsSummary.MostFrequentMood</MudText>
