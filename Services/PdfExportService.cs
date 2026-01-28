@@ -1,4 +1,6 @@
+// We use Regex to clean up and parse the HTML content from our journal editor
 using System.Text.RegularExpressions;
+// This toolkit helps us save files to the user's device easily
 using CommunityToolkit.Maui.Storage;
 using JournalApp.Data;
 using JournalApp.Models.Sqlite;
@@ -16,11 +18,14 @@ public class PdfExportService
         _entryService = entryService;
     }
 
+    // This is the main method that handles exporting multiple entries as a PDF
     public async Task<ExportResult> ExportEntriesAsync(DateTime startDate, DateTime endDate)
     {
+        // First, we grab all the entries between the dates the user selected
         var entries = await _entryService.GetEntriesInRangeAsync(startDate, endDate);
         var db = await JournalDatabase.GetConnectionAsync();
 
+        // We need to map Mood and Tag IDs to their actual names so the PDF shows "Happy" instead of "1"
         var moods = await db.Table<Mood>().ToListAsync();
         var moodById = moods.ToDictionary(m => m.Id, m => m.Name);
         var categoryByMoodId = moods.ToDictionary(m => m.Id, m => m.Category);
@@ -46,6 +51,7 @@ public class PdfExportService
             : ExportResult.Failure(result.Exception?.Message ?? "Export failed.");
     }
 
+    // This private method builds the actual layout of the PDF document using QuestPDF
     private static byte[] BuildDocument(
         List<JournalEntry> entries,
         Dictionary<int, string> moodById,
@@ -53,6 +59,7 @@ public class PdfExportService
         Dictionary<int, string> tagById,
         Dictionary<int, List<int>> tagsByEntry)
     {
+        // We create a document container where we define margins, fonts, and dynamic content
         var document = Document.Create(container =>
         {
             container.Page(page =>
@@ -100,12 +107,12 @@ public class PdfExportService
         return document.GeneratePdf();
     }
 
+    // Since QuestPDF doesn't support HTML directly, we built this simple parser to handle basic tags
     private static void RenderHtmlContent(ColumnDescriptor col, string html)
     {
         if (string.IsNullOrWhiteSpace(html)) return;
 
-        // Split by major block elements (p, li, blockquote)
-        // This is a simplified parser for Quill-generated HTML
+        // We split the HTML string into "blocks" like paragraphs (<p>) and list items (<li>)
         var blocks = Regex.Split(html, @"(?=<(?:p|li|ul|ol|h[1-6]|blockquote)[^>]*>)");
 
         foreach (var block in blocks)
@@ -113,6 +120,7 @@ public class PdfExportService
             if (string.IsNullOrWhiteSpace(block)) continue;
 
             var cleanBlock = block.Trim();
+            // Check if this block is a list item so we can add a bullet point symbol
             bool isListItem = cleanBlock.StartsWith("<li", StringComparison.OrdinalIgnoreCase);
             bool isHeading = Regex.IsMatch(cleanBlock, @"^<h[1-6]", RegexOptions.IgnoreCase);
 
@@ -125,6 +133,7 @@ public class PdfExportService
 
                 row.RelativeItem().Text(text =>
                 {
+                    // Now we parse inline styles like bold and italic for the text inside the block
                     ParseInlineStyles(text, cleanBlock, isHeading);
                 });
             });

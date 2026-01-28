@@ -9,11 +9,13 @@ public class AuthService
 {
     private User? _currentUser;
 
+    // State management: Checking if the user is authenticated or has even set a PIN yet
     public bool IsLoggedIn { get; private set; }
     public bool HasAccount { get; private set; }
     public string? Username => _currentUser?.Username;
     public string? UserId => _currentUser?.Id;
 
+    // Initialize the service by checking if a user exists in the local database
     public async Task InitializeAsync()
     {
         _currentUser = await JournalDatabase.GetUserAsync();
@@ -145,6 +147,8 @@ public class AuthService
         }
     }
 
+    // SECURITY: We never store the plain PIN. We "hash" it using SHA256.
+    // This way, even if someone steals the database, they can't see the actual PIN.
     private static string HashPin(string pin)
     {
         using var sha256 = SHA256.Create();

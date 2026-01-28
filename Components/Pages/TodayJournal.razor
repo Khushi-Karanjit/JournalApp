@@ -59,7 +59,11 @@
                         <button class="ql-link"></button>
                     </span>
                 </div>
-                <div id="journal" class="mb-2"></div>
+                <div id="journal" class="mb-2 @(string.IsNullOrEmpty(_contentError) ? "" : "border-danger border-2")" style="min-height: 200px;"></div>
+                @if (!string.IsNullOrEmpty(_contentError))
+                {
+                    <MudText Color="Color.Error" Typo="Typo.caption" Class="d-block mb-1">@_contentError</MudText>
+                }
                 <MudText Typo="Typo.caption" Class="muted-text">Words: @CountWords(_content)</MudText>
 
                 @if (_todayEntry is not null)
@@ -237,10 +241,12 @@
     {
         if (firstRender)
         {
+            // CRITICAL: We initialize the JavaScript Quill editor once the UI is ready
             _objRef = DotNetObjectReference.Create(this);
             JS.InvokeVoidAsync("initQuill", "journal", _objRef);
             _editorReady = true;
 
+            // If we already loaded data from the DB, push it into the editor
             if (_pendingContent is not null)
             {
                 JS.InvokeVoidAsync("setQuillHtml", _pendingContent);
@@ -268,6 +274,7 @@
     private string _status = "";
     private string _titleError = "";
     private string _moodError = "";
+    private string _contentError = "";
     private bool _editorReady;
     private string? _pendingContent;
     private DateTime? _loadedDate;
@@ -425,12 +432,15 @@
         _status = "New tag added successfully.";
     }
 
+    // The Save method handles validation, confirmation, and DB persistence
     private async Task Save()
     {
         try
         {
+            // Step 1: Clear old errors and start validation
             _titleError = "";
             _moodError = "";
+            _contentError = "";
             _status = "";
 
             bool hasError = false;
@@ -447,16 +457,17 @@
                 hasError = true;
             }
 
-            if (hasError)
-            {
-                _status = "Please fix the errors above.";
-                return;
-            }
-
+            // Step 2: Grab the rich text content from the JS editor
             _content = await JS.InvokeAsync<string>("getQuillHtml");
             if (string.IsNullOrWhiteSpace(_content) || _content == "<p><br></p>")
             {
-                _status = "Add some content before saving.";
+                _contentError = "Cannot save an empty journal. Please add some content.";
+                hasError = true;
+            }
+
+            if (hasError)
+            {
+                _status = "Please fix the errors above.";
                 return;
             }
 

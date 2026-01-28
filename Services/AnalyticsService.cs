@@ -19,10 +19,13 @@ public class AnalyticsService
 
         var db = await JournalDatabase.GetConnectionAsync();
 
+        // Query 1: Count total entries in the range
         var totalEntries = await db.ExecuteScalarAsync<int>(
             "SELECT COUNT(*) FROM JournalEntry WHERE EntryDate >= ? AND EntryDate <= ?",
             start, end);
 
+        // Query 2: Get mood distribution using a UNION ALL subquery
+        // We look at PrimaryMood, SecondaryMood1, and SecondaryMood2 together
         var moodRows = await db.QueryAsync<MoodCountRow>(
             @"SELECT Mood.Category AS Category, Mood.Name AS Name, COUNT(*) AS Count
               FROM (
@@ -137,9 +140,11 @@ public class AnalyticsService
             wordTrend);
     }
 
+    // Helper method to count words in the HTML content
     private static int CountWords(string? text)
     {
         if (string.IsNullOrWhiteSpace(text)) return 0;
+        // We strip the HTML tags first so we only count the actual words written
         var noHtml = Regex.Replace(text, "<.*?>", " ");
         return noHtml
             .Split(' ', StringSplitOptions.RemoveEmptyEntries)
@@ -198,16 +203,18 @@ public class AnalyticsService
         public DateTime EntryDate { get; set; }
     }
 
+    // This method counts how many days in a row the user has written, starting from the end date
     private static int CalculateCurrentStreak(HashSet<DateTime> dates, DateTime endDate)
     {
         var cursor = endDate.Date;
+        // If there's no entry for the end date, the streak is 0
         if (!dates.Contains(cursor)) return 0;
 
         var streak = 0;
         while (dates.Contains(cursor))
         {
             streak++;
-            cursor = cursor.AddDays(-1);
+            cursor = cursor.AddDays(-1); // Move backward day by day
         }
 
         return streak;
