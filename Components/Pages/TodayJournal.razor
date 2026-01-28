@@ -34,7 +34,9 @@
                               Placeholder="Give your entry a title..."
                               @bind-Value="_title"
                               Variant="Variant.Outlined"
-                              Class="mb-3" />
+                              Error="@(!string.IsNullOrEmpty(_titleError))"
+                              ErrorText="@_titleError"
+                              Class="@(string.IsNullOrEmpty(_titleError) ? "mb-3" : "mb-1")" />
 
                 <MudText Typo="Typo.subtitle2" Class="muted-text mb-1">Content</MudText>
                 <div id="journal-toolbar" class="mb-2">
@@ -78,8 +80,14 @@
         <h5 class="mb-3">Mood</h5>
 
         <div class="mb-3">
-            <label class="form-label" for="primary-mood">Primary mood (required)</label>
-            <select class="form-select" @bind="_primaryMoodId" id="primary-mood" name="primary-mood" aria-label="Primary mood">
+            <label class="form-label @(string.IsNullOrEmpty(_moodError) ? "" : "text-danger")" for="primary-mood">
+                Primary mood (required)
+            </label>
+            <select class="form-select @(string.IsNullOrEmpty(_moodError) ? "" : "is-invalid")" 
+                    @bind="_primaryMoodId" 
+                    id="primary-mood" 
+                    name="primary-mood" 
+                    aria-label="Primary mood">
                 <option value="0">Select a mood</option>
                 @foreach (var group in _moodGroups)
                 {
@@ -91,6 +99,10 @@
                     </optgroup>
                 }
             </select>
+            @if (!string.IsNullOrEmpty(_moodError))
+            {
+                <div class="invalid-feedback d-block">@_moodError</div>
+            }
         </div>
 
         <div>
@@ -254,6 +266,8 @@
     private string _title = "";
     private string _content = "";
     private string _status = "";
+    private string _titleError = "";
+    private string _moodError = "";
     private bool _editorReady;
     private string? _pendingContent;
     private DateTime? _loadedDate;
@@ -377,6 +391,26 @@
             return;
         }
 
+        // Check if it already exists (in available tags)
+        var existing = _availableTags
+            .FirstOrDefault(t => t.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+
+        if (existing != null)
+        {
+            if (_selectedTagIds.Contains(existing.Id))
+            {
+                _status = "This tag is already added to this entry.";
+            }
+            else
+            {
+                _selectedTagIds.Add(existing.Id);
+                _status = "Tag already exists, selected it for you.";
+                RefreshSelectedTags();
+            }
+            _newTagText = "";
+            return;
+        }
+
         await TagService.AddCustomAsync(name);
         _availableTags = await TagService.GetAllAsync();
 
@@ -388,23 +422,41 @@
 
         RefreshSelectedTags();
         _newTagText = "";
-        _status = "Tag added.";
+        _status = "New tag added successfully.";
     }
 
     private async Task Save()
     {
         try
         {
+            _titleError = "";
+            _moodError = "";
+            _status = "";
+
+            bool hasError = false;
+
+            if (string.IsNullOrWhiteSpace(_title))
+            {
+                _titleError = "Title is required.";
+                hasError = true;
+            }
+
             if (_primaryMoodId <= 0)
             {
-                _status = "Primary mood is required.";
+                _moodError = "Please select a primary mood.";
+                hasError = true;
+            }
+
+            if (hasError)
+            {
+                _status = "Please fix the errors above.";
                 return;
             }
 
             _content = await JS.InvokeAsync<string>("getQuillHtml");
-            if (string.IsNullOrWhiteSpace(_title) && string.IsNullOrWhiteSpace(_content))
+            if (string.IsNullOrWhiteSpace(_content) || _content == "<p><br></p>")
             {
-                _status = "Add a title or some content before saving.";
+                _status = "Add some content before saving.";
                 return;
             }
 
